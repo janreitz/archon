@@ -59,7 +59,7 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
 
 size_t Archetype::add_entity(EntityId entity)
 {
-    assert(entities_to_idx.contains(entity) && "Entity already exists");
+    assert(!entities_to_idx.contains(entity) && "Entity already exists");
 
     const size_t newIndex = idx_to_entity.size();
     idx_to_entity.push_back(entity);
