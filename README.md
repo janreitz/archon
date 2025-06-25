@@ -25,6 +25,7 @@ struct Velocity {
 int main() {
     // Create world and register components
     ecs::World world;
+    // Components must be registered before use:
     ecs::ComponentRegistry::instance().register_component<Position>();
     ecs::ComponentRegistry::instance().register_component<Velocity>();
     
@@ -54,20 +55,17 @@ int main() {
 
 - **Entity**: A unique identifier (32-bit integer)
 - **Component**: Plain data structures that hold state
-- **Archetype**: Groups entities with the same component signature for efficient storage
+- **Archetype**: Entities with the same component signature are grouped into Archetypes, which store components in Structure of Arrays (SoA) format. This provides cache-efficient access patterns during queries.
 - **World**: Container that manages all entities, components, and their relationships
-- **Query**: Iterate over queried components of all entities that satisfy the query
-
-### Memory Layout
-
-Archon uses archetype-based storage where entities with the same component signature are stored together in contiguous memory. This provides:
-
-- **Cache efficiency**: Components are stored in Structure of Arrays (SoA) format
-- **Memory locality**: Related data is stored close together in memory
+- **Query**: Template-based system for iterating over components with compile-time type safety
 
 ### Query System
 
-The query system works with any callable - lambdas, functions, or functors. It automatically detects if your callable wants the entity ID as an additional parameter:
+The query system supports:
+- Template-based queries: `ecs::Query<Position, Velocity>()`
+- Optional entity parameter: Functions can optionally take `ecs::EntityId` as last parameter
+- Filtering: `.with<Component>()` and `.without<Component>()` methods
+- Const-correctness: Const world references require const component parameters
 
 ```cpp
 // Lambda without entity
