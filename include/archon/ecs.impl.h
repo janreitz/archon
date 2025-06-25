@@ -187,11 +187,9 @@ void World::add_components(EntityId entity, Components &&...component)
     ComponentMask target_mask =
         oldArchetype ? oldArchetype->mask_ : ComponentMask();
 
-    // Get the MetaComponentIds for all component types
-    const auto component_ids = get_component_meta_ids<Components...>();
-    for (auto id : component_ids) {
-        target_mask.set(id);
-    }
+    // Add the new component types to the mask
+    const auto add_mask = get_component_mask<Components...>();
+    target_mask |= add_mask;
 
     auto *target_archetype = get_or_create_archetype(target_mask);
 

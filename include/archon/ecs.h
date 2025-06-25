@@ -272,15 +272,6 @@ class World
     std::tuple<Components *...> get_components(EntityId entity);
 
   private:
-    // Helper to get meta IDs for a parameter pack of component types
-
-    template <typename... Components> auto get_component_meta_ids()
-    {
-        return std::array<MetaComponentId, sizeof...(Components)>{
-            ComponentRegistry::instance()
-                .get_meta_id<std::decay_t<Components>>()...};
-    }
-
     template <typename... Components> ComponentMask get_component_mask()
     {
         ComponentMask mask;
