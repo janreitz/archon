@@ -1,8 +1,6 @@
 # Archon ECS
 
-A high-performance, archetype-based Entity-Component-System library written in C++20.
-
-## Features
+A minimal archetype-based Entity-Component-System library written in C++20:
 
 - **Simple API**: Minimal, unopinionated interface that doesn't impose constraints on your architecture
 - **Ergonomic component storage**: Store any type as a component
