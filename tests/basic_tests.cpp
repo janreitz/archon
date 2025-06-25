@@ -101,3 +101,131 @@ TEST_CASE("Basic querying", "[ecs]")
         REQUIRE(count == 3);
     }
 }
+
+TEST_CASE("Component removal operations", "[ecs]")
+{
+    ecs::World world;
+    ecs::ComponentRegistry::instance().register_component<Position>();
+    ecs::ComponentRegistry::instance().register_component<Velocity>();
+    ecs::ComponentRegistry::instance().register_component<Health>();
+
+    SECTION("Remove single component")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F},
+                             Velocity{4.0F, 5.0F, 6.0F});
+
+        // Verify components exist
+        auto *pos = world.get_component<Position>(entity);
+        auto *vel = world.get_component<Velocity>(entity);
+        REQUIRE(pos != nullptr);
+        REQUIRE(vel != nullptr);
+
+        // Remove one component
+        world.remove_components<Velocity>(entity);
+
+        // Position should still exist, Velocity should be gone
+        pos = world.get_component<Position>(entity);
+        vel = world.get_component<Velocity>(entity);
+        REQUIRE(pos != nullptr);
+        REQUIRE(vel == nullptr);
+        REQUIRE(pos->x == 1.0F);
+        REQUIRE(pos->y == 2.0F);
+        REQUIRE(pos->z == 3.0F);
+    }
+
+    SECTION("Remove multiple components")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F},
+                             Velocity{4.0F, 5.0F, 6.0F},
+                             Health{100.0F, 100.0F});
+
+        // Remove multiple components at once
+        world.remove_components<Velocity, Health>(entity);
+
+        // Only Position should remain
+        auto *pos = world.get_component<Position>(entity);
+        auto *vel = world.get_component<Velocity>(entity);
+        auto *health = world.get_component<Health>(entity);
+        REQUIRE(pos != nullptr);
+        REQUIRE(vel == nullptr);
+        REQUIRE(health == nullptr);
+        REQUIRE(pos->x == 1.0F);
+    }
+
+    SECTION("Remove all components")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F},
+                             Velocity{4.0F, 5.0F, 6.0F});
+
+        // Remove all components
+        world.remove_components<Position, Velocity>(entity);
+
+        // Entity should have no components
+        auto *pos = world.get_component<Position>(entity);
+        auto *vel = world.get_component<Velocity>(entity);
+        REQUIRE(pos == nullptr);
+        REQUIRE(vel == nullptr);
+    }
+
+    SECTION("Remove non-existent component")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F});
+
+        // Try to remove a component that doesn't exist
+        world.remove_components<Velocity>(entity);
+
+        // Position should still exist
+        auto *pos = world.get_component<Position>(entity);
+        REQUIRE(pos != nullptr);
+        REQUIRE(pos->x == 1.0F);
+    }
+
+    SECTION("Remove from non-existent entity")
+    {
+        // This should not crash
+        world.remove_components<Position>(999);
+    }
+
+    SECTION("Query after component removal")
+    {
+        // Create entities with different component combinations
+        auto e1 = world.create_entity();
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F},
+                             Velocity{1.0F, 0.0F, 0.0F});
+
+        auto e2 = world.create_entity();
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F},
+                             Velocity{2.0F, 0.0F, 0.0F});
+
+        auto e3 = world.create_entity();
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F});
+
+        // Initially, 2 entities should have both Position and Velocity
+        int count_before = 0;
+        ecs::Query<Position, Velocity>().each(world, [&](Position&, Velocity&) {
+            count_before++;
+        });
+        REQUIRE(count_before == 2);
+
+        // Remove Velocity from one entity
+        world.remove_components<Velocity>(e1);
+
+        // Now only 1 entity should have both components
+        int count_after = 0;
+        ecs::Query<Position, Velocity>().each(world, [&](Position&, Velocity&) {
+            count_after++;
+        });
+        REQUIRE(count_after == 1);
+
+        // But all 3 entities should still have Position
+        int pos_count = 0;
+        ecs::Query<Position>().each(world, [&](Position&) {
+            pos_count++;
+        });
+        REQUIRE(pos_count == 3);
+    }
+}

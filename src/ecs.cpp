@@ -122,6 +122,14 @@ Archetype::with_component(const MetaComponentId &new_comp_id) const
     return std::make_unique<Archetype>(new_mask);
 }
 
+std::unique_ptr<Archetype>
+Archetype::without_component(const MetaComponentId &remove_comp_id) const
+{
+    auto new_mask = mask_;
+    new_mask.reset(remove_comp_id);
+    return std::make_unique<Archetype>(new_mask);
+}
+
 void move_entity_between_archetypes(EntityId entity, Archetype *src,
                                     size_t src_idx, Archetype *dst,
                                     size_t dst_idx)

@@ -29,7 +29,11 @@ template <typename T> const T *ComponentArray<T>::get_data() const
 template <typename T> T *Archetype::get_component(size_t index)
 {
     const MetaComponentId id = ComponentRegistry::instance().get_meta_id<T>();
-    return static_cast<T *>(components[id]->get_ptr(index));
+    auto it = components.find(id);
+    if (it == components.end()) {
+        return nullptr;
+    }
+    return static_cast<T *>(it->second->get_ptr(index));
 }
 
 template <typename T> T *Archetype::get_component(EntityId entity)
@@ -219,6 +223,69 @@ void World::add_components(EntityId entity, Components &&...component)
         }
         oldArchetype->remove_entity(entity);
     }
+
+    // Update entity mapping
+    entity_to_archetype_[entity] = target_archetype;
+}
+
+template <typename... Components> void World::remove_components(EntityId entity)
+{
+#ifdef TRACY_ENABLE
+    ZoneScoped;
+#endif
+    auto entity_it = entity_to_archetype_.find(entity);
+    if (entity_it == entity_to_archetype_.end()) {
+        return; // Entity doesn't exist
+    }
+
+    Archetype *current_archetype = entity_it->second;
+    if (!current_archetype) {
+        return; // Entity has no archetype
+    }
+
+    assert(current_archetype->entities_to_idx.find(entity) !=
+               current_archetype->entities_to_idx.end() &&
+           "Entity should exist in its assigned archetype");
+
+    // Create target mask by removing the specified components
+    const auto remove_mask = get_component_mask<Components...>();
+    const ComponentMask target_mask = current_archetype->mask_ & (~remove_mask);
+
+    // If the mask is empty, remove the entity entirely
+    if (target_mask.none()) {
+        current_archetype->remove_entity(entity);
+        entity_to_archetype_.erase(entity_it);
+        return;
+    }
+
+    // Find or create the target archetype
+    auto *target_archetype = get_or_create_archetype(target_mask);
+
+    // If target archetype is the same as current, no migration needed
+    if (target_archetype == current_archetype) {
+        return;
+    }
+
+    // Get the old index before modifying anything
+    const size_t old_idx = current_archetype->entities_to_idx[entity];
+
+    // Add entity to target archetype
+    const size_t new_idx = target_archetype->add_entity(entity);
+
+    // Copy remaining components from current to target archetype
+    for (const auto &[comp_id, old_array] : current_archetype->components) {
+        // Only copy components that exist in the target archetype (use
+        // ComponentMask for faster lookup)
+        if (target_mask.test(comp_id)) {
+            const auto *meta = ComponentRegistry::instance().get_meta(comp_id);
+            meta->copy_component(
+                target_archetype->components[comp_id]->get_ptr(new_idx),
+                old_array->get_ptr(old_idx));
+        }
+    }
+
+    // Remove entity from current archetype
+    current_archetype->remove_entity(entity);
 
     // Update entity mapping
     entity_to_archetype_[entity] = target_archetype;

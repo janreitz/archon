@@ -153,6 +153,10 @@ class Archetype
     // Create archetype with additional component
     std::unique_ptr<Archetype>
     with_component(const MetaComponentId &new_comp_id) const;
+
+    // Create archetype without specific component
+    std::unique_ptr<Archetype>
+    without_component(const MetaComponentId &remove_comp_id) const;
 };
 
 void move_entity_between_archetypes(EntityId entity, Archetype *src,
@@ -260,6 +264,8 @@ class World
     template <typename... Components>
     void add_components(EntityId entity, Components &&...component);
 
+    template <typename... Components> void remove_components(EntityId entity);
+
     template <typename Component> Component *get_component(EntityId entity);
 
     template <typename... Components>
@@ -273,6 +279,15 @@ class World
         return std::array<MetaComponentId, sizeof...(Components)>{
             ComponentRegistry::instance()
                 .get_meta_id<std::decay_t<Components>>()...};
+    }
+
+    template <typename... Components> ComponentMask get_component_mask()
+    {
+        ComponentMask mask;
+        (mask.set(ComponentRegistry::instance()
+                      .get_meta_id<std::decay_t<Components>>()),
+         ...);
+        return mask;
     }
 
     Archetype *get_or_create_archetype(const ComponentMask &mask);
