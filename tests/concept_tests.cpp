@@ -180,11 +180,12 @@ void test_function_types()
 void test_with_lambda_functions()
 {
     // ✅ Mutable world lambdas
-    auto mutable_lambda = [](Position& /*pos*/, Velocity& /*vel*/) {};
-    auto const_lambda = [](const Position& /*pos*/, const Velocity& /*vel*/) {};
-    auto mixed_lambda = [](Position& /*pos*/, const Velocity& /*vel*/) {};
+    auto mutable_lambda = [](Position & /*pos*/, Velocity & /*vel*/) {};
+    auto const_lambda = [](const Position & /*pos*/, const Velocity & /*vel*/) {
+    };
+    auto mixed_lambda = [](Position & /*pos*/, const Velocity & /*vel*/) {};
     auto value_lambda = [](Position /*pos*/, Velocity /*vel*/) {};
-    auto mixed_value_lambda = [](Position /*pos*/, const Velocity& /*vel*/) {};
+    auto mixed_value_lambda = [](Position /*pos*/, const Velocity & /*vel*/) {};
 
     static_assert(ArgsConstCompatible<World, decltype(mutable_lambda)>);
     static_assert(ArgsConstCompatible<World, decltype(const_lambda)>);
@@ -266,7 +267,8 @@ void test_realistic_ecs_patterns()
             const World, decltype(movement_system)>); // Position& not allowed
 
     // Rendering system (const world, const components)
-    auto rendering_system = [](const Position& /*pos*/, const Health& /*health*/) {
+    auto rendering_system = [](const Position & /*pos*/,
+                               const Health & /*health*/) {
         // Read-only rendering
     };
     static_assert(ArgsConstCompatible<World, decltype(rendering_system)>);
@@ -284,7 +286,7 @@ void test_realistic_ecs_patterns()
                             decltype(analytics_system)>); // Should work!
 
     // Mixed system (const world, mixed value/const ref)
-    auto mixed_system = [](Position /*pos*/, const Velocity& /*vel*/) {
+    auto mixed_system = [](Position /*pos*/, const Velocity & /*vel*/) {
         // Copy position, reference velocity
     };
     static_assert(ArgsConstCompatible<World, decltype(mixed_system)>);
@@ -292,8 +294,8 @@ void test_realistic_ecs_patterns()
                                       decltype(mixed_system)>); // Should work!
 
     // Debug logging (const world, all const)
-    auto logging_system = [](const Position& /*pos*/, const Velocity& /*vel*/,
-                             const Health& /*health*/) {
+    auto logging_system = [](const Position & /*pos*/, const Velocity & /*vel*/,
+                             const Health & /*health*/) {
         // Log component values
     };
     static_assert(ArgsConstCompatible<World, decltype(logging_system)>);
@@ -303,7 +305,7 @@ void test_realistic_ecs_patterns()
 // Performance Tests - Ensure Concepts Don't Add Runtime Overhead
 void test_compile_time_only()
 {
-    auto test_func = [](Position& /*pos*/) {};
+    auto test_func = [](Position & /*pos*/) {};
 
     constexpr bool test1 = WorldType<World>;
     constexpr bool test2 = ConstCompatible<World, Position &>;
@@ -320,59 +322,21 @@ void test_compile_time_only()
 // Wrap concept tests in Catch2 test cases for CMake integration
 TEST_CASE("ECS Concept Validation", "[concepts]")
 {
-    SECTION("WorldType Concept")
-    {
-        // The real validation happens at compile-time via static_assert
-        // This test just ensures the function compiles and can be called
-        ecs::concept_tests::test_world_type_concept();
-        REQUIRE(true); // If we get here, all static_asserts passed
-    }
-    
-    SECTION("ConstCompatible Concept")
-    {
-        ecs::concept_tests::test_const_compatible_concept();
-        REQUIRE(true);
-    }
-    
-    SECTION("ArgsConstCompatible Concept")
-    {
-        ecs::concept_tests::test_function_const_compatible_concept();
-        REQUIRE(true);
-    }
-    
-    SECTION("Function Types")
-    {
-        ecs::concept_tests::test_function_types();
-        REQUIRE(true);
-    }
-    
-    SECTION("Lambda Functions")
-    {
-        ecs::concept_tests::test_with_lambda_functions();
-        REQUIRE(true);
-    }
-    
-    SECTION("Function Pointers")
-    {
-        ecs::concept_tests::test_function_pointers();
-        REQUIRE(true);
-    }
-    
-    SECTION("Edge Cases")
-    {
-        ecs::concept_tests::test_edge_cases();
-        REQUIRE(true);
-    }
-    
-    SECTION("Realistic ECS Patterns")
-    {
-        ecs::concept_tests::test_realistic_ecs_patterns();
-        REQUIRE(true);
-    }
-    
-    SECTION("Compile-time Only Validation")
-    {
-        ecs::concept_tests::test_compile_time_only();
-        REQUIRE(true);
-    }
+    // The real validation happens at compile-time via static_assert
+    // This test just ensures the function compiles and can be called
+    ecs::concept_tests::test_world_type_concept();
+
+    ecs::concept_tests::test_const_compatible_concept();
+
+    ecs::concept_tests::test_function_const_compatible_concept();
+
+    ecs::concept_tests::test_with_lambda_functions();
+
+    ecs::concept_tests::test_function_pointers();
+
+    ecs::concept_tests::test_realistic_ecs_patterns();
+
+    ecs::concept_tests::test_compile_time_only();
+
+    REQUIRE(true); // Ensure the test case runs
 }
