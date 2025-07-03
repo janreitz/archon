@@ -73,11 +73,7 @@ struct MetaComponentArray {
 class ComponentRegistry
 {
   public:
-    static ComponentRegistry &instance()
-    {
-        static ComponentRegistry registry;
-        return registry;
-    }
+    static ComponentRegistry &instance();
 
     template <typename T> void register_component()
     {
@@ -113,18 +109,9 @@ class ComponentRegistry
         return get_meta_id(typeid(std::decay_t<T>));
     }
 
-    MetaComponentId get_meta_id(std::type_index type_idx) const
-    {
-        auto it = component_ids.find(type_idx);
-        assert(it != component_ids.end() && "Component type not registered");
-        return it->second;
-    }
+    MetaComponentId get_meta_id(std::type_index type_idx) const;
 
-    const MetaComponentArray &get_meta(MetaComponentId component_id) const
-    {
-        assert(component_id < meta_data.size());
-        return meta_data[component_id];
-    }
+    const MetaComponentArray &get_meta(MetaComponentId component_id) const;
 
   private:
     std::vector<MetaComponentArray> meta_data;

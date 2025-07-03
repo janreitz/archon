@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstring> // For memcpy, size_t
 #include <memory>
+#include <typeindex>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,25 @@ void ComponentArray::remove(size_t idx)
 void *ComponentArray::get_ptr(size_t index)
 {
     return data_.data() + (index * component_size_);
+}
+
+ComponentRegistry &ComponentRegistry::instance()
+{
+    static ComponentRegistry registry;
+    return registry;
+}
+
+MetaComponentId ComponentRegistry::get_meta_id(std::type_index type_idx) const
+{
+    assert(component_ids.contains(type_idx) && "Component type not registered");
+    return component_ids.at(type_idx);
+}
+
+const MetaComponentArray &
+ComponentRegistry::get_meta(MetaComponentId component_id) const
+{
+    assert(component_id < meta_data.size());
+    return meta_data[component_id];
 }
 
 EntityId World::create_entity() { return next_entity_id_++; }
