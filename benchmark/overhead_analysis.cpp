@@ -1,7 +1,10 @@
 #include "BenchmarkComponents.h"
 #include <archon/ecs.h>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
+#include <vector>
 
 constexpr std::size_t ENTITY_COUNT = 10000;
 constexpr std::size_t COMPONENT_DATA_SIZE = 128;
