@@ -35,11 +35,10 @@ TEST_CASE("Basic entity and component operations", "[ecs]")
         auto entity = world.create_entity();
         world.add_components(entity, Position{1.0F, 2.0F, 3.0F});
 
-        auto *pos = world.get_component<Position>(entity);
-        REQUIRE(pos != nullptr);
-        REQUIRE(pos->x == 1.0F);
-        REQUIRE(pos->y == 2.0F);
-        REQUIRE(pos->z == 3.0F);
+        auto &pos = world.get_component<Position>(entity);
+        REQUIRE(pos.x == 1.0F);
+        REQUIRE(pos.y == 2.0F);
+        REQUIRE(pos.z == 3.0F);
     }
 
     SECTION("Multiple components")
@@ -49,10 +48,8 @@ TEST_CASE("Basic entity and component operations", "[ecs]")
                              Velocity{4.0F, 5.0F, 6.0F});
 
         auto [pos, vel] = world.get_components<Position, Velocity>(entity);
-        REQUIRE(pos != nullptr);
-        REQUIRE(vel != nullptr);
-        REQUIRE(pos->x == 1.0F);
-        REQUIRE(vel->vx == 4.0F);
+        REQUIRE(pos.x == 1.0F);
+        REQUIRE(vel.vx == 4.0F);
     }
 }
 
@@ -119,22 +116,18 @@ TEST_CASE("Component removal operations", "[ecs]")
                              Velocity{4.0F, 5.0F, 6.0F});
 
         // Verify components exist
-        auto *pos = world.get_component<Position>(entity);
-        auto *vel = world.get_component<Velocity>(entity);
-        REQUIRE(pos != nullptr);
-        REQUIRE(vel != nullptr);
+        auto &pos = world.get_component<Position>(entity);
+        REQUIRE(world.has_component<Velocity>(entity));
 
         // Remove one component
         world.remove_components<Velocity>(entity);
+        REQUIRE(!world.has_component<Velocity>(entity));
 
         // Position should still exist, Velocity should be gone
         pos = world.get_component<Position>(entity);
-        vel = world.get_component<Velocity>(entity);
-        REQUIRE(pos != nullptr);
-        REQUIRE(vel == nullptr);
-        REQUIRE(pos->x == 1.0F);
-        REQUIRE(pos->y == 2.0F);
-        REQUIRE(pos->z == 3.0F);
+        REQUIRE(pos.x == 1.0F);
+        REQUIRE(pos.y == 2.0F);
+        REQUIRE(pos.z == 3.0F);
     }
 
     SECTION("Remove multiple components")
@@ -148,13 +141,10 @@ TEST_CASE("Component removal operations", "[ecs]")
         world.remove_components<Velocity, Health>(entity);
 
         // Only Position should remain
-        auto *pos = world.get_component<Position>(entity);
-        auto *vel = world.get_component<Velocity>(entity);
-        auto *health = world.get_component<Health>(entity);
-        REQUIRE(pos != nullptr);
-        REQUIRE(vel == nullptr);
-        REQUIRE(health == nullptr);
-        REQUIRE(pos->x == 1.0F);
+        auto &pos = world.get_component<Position>(entity);
+        REQUIRE(pos.x == 1.0F);
+        REQUIRE(!world.has_component<Velocity>(entity));
+        REQUIRE(!world.has_component<Health>(entity));
     }
 
     SECTION("Remove all components")
@@ -167,10 +157,8 @@ TEST_CASE("Component removal operations", "[ecs]")
         world.remove_components<Position, Velocity>(entity);
 
         // Entity should have no components
-        auto *pos = world.get_component<Position>(entity);
-        auto *vel = world.get_component<Velocity>(entity);
-        REQUIRE(pos == nullptr);
-        REQUIRE(vel == nullptr);
+        REQUIRE(!world.has_component<Position>(entity));
+        REQUIRE(!world.has_component<Velocity>(entity));
     }
 
     SECTION("Remove non-existent component")
@@ -182,9 +170,8 @@ TEST_CASE("Component removal operations", "[ecs]")
         world.remove_components<Velocity>(entity);
 
         // Position should still exist
-        auto *pos = world.get_component<Position>(entity);
-        REQUIRE(pos != nullptr);
-        REQUIRE(pos->x == 1.0F);
+        auto &pos = world.get_component<Position>(entity);
+        REQUIRE(pos.x == 1.0F);
     }
 
     SECTION("Remove from non-existent entity")

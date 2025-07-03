@@ -16,33 +16,40 @@ template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 }
 
 // Archetype implementation
-template <typename T> T *Archetype::get_component(size_t index)
+template <typename T> T *Archetype::data()
 {
     const MetaComponentId id = ComponentRegistry::instance().get_meta_id<T>();
-    auto it = components.find(id);
-    if (it == components.end()) {
-        return nullptr;
-    }
-    return static_cast<T *>(it->second->get_ptr(index));
+
+    assert(components.contains(id) &&
+           "Archetype does not store component type");
+
+    return components[id]->data<T>();
 }
 
-template <typename T> T *Archetype::get_component(EntityId entity)
+template <typename T> T &Archetype::get_component(size_t index)
 {
-    const auto idx_it = entities_to_idx.find(entity);
-    if (idx_it == entities_to_idx.end()) {
-        return nullptr;
-    }
-    return get_component<T>(idx_it->second);
+    assert(index < idx_to_entity.size() && "Out of bounds access");
+
+    const MetaComponentId id = ComponentRegistry::instance().get_meta_id<T>();
+
+    assert(components.contains(id) &&
+           "Archetype does not store component type");
+
+    return components[id]->get<T>(index);
+}
+
+template <typename T> T &Archetype::get_component(EntityId entity)
+{
+    assert(entities_to_idx.contains(entity) && "Entity not in Archetype");
+    return get_component<T>(entities_to_idx[entity]);
 }
 
 template <typename... Components>
-std::tuple<Components *...> Archetype::get_components(EntityId entity)
+std::tuple<Components &...> Archetype::get_components(EntityId entity)
 {
-    const auto idx_it = entities_to_idx.find(entity);
-    if (idx_it == entities_to_idx.end()) {
-        return std::make_tuple(static_cast<Components *>(nullptr)...);
-    }
-    return std::make_tuple(get_component<Components>(idx_it->second)...);
+    assert(entities_to_idx.contains(entity) && "Entity not in Archetype");
+    const size_t index = entities_to_idx[entity];
+    return std::tuple<Components &...>(get_component<Components>(index)...);
 }
 
 // Query implementation
@@ -102,8 +109,8 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
         if (element_count == 0)
             continue; // Early exit for empty archetypes
 
-        auto component_arrays = std::make_tuple(
-            archetype->template get_component<QueryComponents>(size_t{0})...);
+        auto component_arrays =
+            std::make_tuple(archetype->template data<QueryComponents>()...);
 
         for (size_t idx = 0; idx < element_count; idx++) {
             if constexpr (has_extra_param<
@@ -191,9 +198,9 @@ void World::add_components(EntityId entity, Components &&...component)
     (
         [&]() {
             using DecayedType = std::decay_t<Components>;
-            auto *component_ptr =
+            auto &component_ptr =
                 target_archetype->template get_component<DecayedType>(new_idx);
-            *component_ptr = std::forward<Components>(component);
+            component_ptr = std::forward<Components>(component);
             component_index++;
         }(),
         ...);
@@ -279,23 +286,35 @@ template <typename... Components> void World::remove_components(EntityId entity)
     entity_to_archetype_[entity] = target_archetype;
 }
 
-template <typename Component> Component *World::get_component(EntityId entity)
+template <typename Component> Component &World::get_component(EntityId entity)
 {
-    auto archetype_it = entity_to_archetype_.find(entity);
-    if (archetype_it == entity_to_archetype_.end()) {
-        return nullptr;
-    }
-    return archetype_it->second->template get_component<Component>(entity);
+    assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
+    return entity_to_archetype_[entity]->template get_component<Component>(
+        entity);
 }
 
 template <typename... Components>
-std::tuple<Components *...> World::get_components(EntityId entity)
+std::tuple<Components &...> World::get_components(EntityId entity)
 {
-    auto archetype_it = entity_to_archetype_.find(entity);
-    if (archetype_it == entity_to_archetype_.end()) {
-        return std::make_tuple(static_cast<Components *>(nullptr)...);
+    assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
+    return entity_to_archetype_[entity]->template get_components<Components...>(
+        entity);
+}
+
+template <typename Component> bool World::has_component(EntityId entity) const
+{
+    auto it = entity_to_archetype_.find(entity);
+    if (it == entity_to_archetype_.end()) {
+        return false;
     }
-    return archetype_it->second->template get_components<Components...>(entity);
+    return it->second->mask_.test(
+        ComponentRegistry::instance().get_meta_id<Component>());
+}
+
+template <typename... Components>
+bool World::has_components(EntityId entity) const
+{
+    return (has_component<Components>(entity) && ...);
 }
 
 } // namespace ecs

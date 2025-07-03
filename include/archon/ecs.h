@@ -50,6 +50,19 @@ class ComponentArray
     void clear();
     void remove(size_t idx);
     void *get_ptr(size_t index);
+    template <typename T> T *data()
+    {
+        return reinterpret_cast<T *>(data_.data());
+    }
+    template <typename T> const T *data() const
+    {
+        return reinterpret_cast<const T *>(data_.data());
+    }
+    template <typename T> T &get(size_t index) { return data<T>()[index]; }
+    template <typename T> const T &get(size_t index) const
+    {
+        return data<const T>()[index];
+    }
 
   private:
     ComponentArray(MetaComponentId meta_id, size_t component_size);
@@ -130,10 +143,11 @@ class Archetype
         components;
     const ComponentMask mask_;
 
-    template <typename T> T *get_component(size_t index);
-    template <typename T> T *get_component(EntityId entity);
+    template <typename T> T *data();
+    template <typename T> T &get_component(size_t index);
+    template <typename T> T &get_component(EntityId entity);
     template <typename... Components>
-    std::tuple<Components *...> get_components(EntityId entity);
+    std::tuple<Components &...> get_components(EntityId entity);
     /// @brief
     /// @param entity
     /// @return ComponentArray index of the new entity
@@ -257,10 +271,14 @@ class World
 
     template <typename... Components> void remove_components(EntityId entity);
 
-    template <typename Component> Component *get_component(EntityId entity);
+    template <typename Component> Component &get_component(EntityId entity);
 
     template <typename... Components>
-    std::tuple<Components *...> get_components(EntityId entity);
+    std::tuple<Components &...> get_components(EntityId entity);
+
+    template <typename Component> bool has_component(EntityId entity) const;
+    template <typename... Components>
+    bool has_components(EntityId entity) const;
 
   private:
     template <typename... Components> ComponentMask get_component_mask()
