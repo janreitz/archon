@@ -13,34 +13,36 @@
 namespace ecs
 {
 
-void IComponentArray::resize(size_t new_size)
+ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size): meta_id_(meta_id), component_size_(component_size){}
+
+void ComponentArray::resize(size_t new_size)
 {
-    data.resize(new_size * component_size);
+    data_.resize(new_size * component_size_);
 }
 
-void IComponentArray::clear() { data.clear(); }
+void ComponentArray::clear() { data_.clear(); }
 
-size_t IComponentArray::size() const { return data.size() / component_size; }
+size_t ComponentArray::size() const { return data_.size() / component_size_; }
 
-void IComponentArray::reserve(size_t size)
+void ComponentArray::reserve(size_t size)
 {
-    data.reserve(size * component_size);
+    data_.reserve(size * component_size_);
 }
 
-void IComponentArray::remove_index(size_t idx)
+void ComponentArray::remove_index(size_t idx)
 {
     assert(idx <= size() && "Index out of bounds in remove_index");
     std::memcpy(
         // to idx
-        data.data() + (idx * component_size),
+        data_.data() + (idx * component_size_),
         // from idx
-        data.data() + ((size() - 1) * component_size), component_size);
-    data.resize(data.size() - component_size);
+        data_.data() + ((size() - 1) * component_size_), component_size_);
+    data_.resize(data_.size() - component_size_);
 }
 
-void *IComponentArray::get_ptr(size_t index)
+void *ComponentArray::get_ptr(size_t index)
 {
-    return data.data() + (index * component_size);
+    return data_.data() + (index * component_size_);
 }
 
 EntityId World::create_entity() { return next_entity_id_++; }

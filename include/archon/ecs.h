@@ -40,33 +40,27 @@ using MetaComponentId = decltype( []() {
 
 class ComponentRegistry;
 
-class IComponentArray
+class ComponentArray
 {
-  protected:
-    MetaComponentId meta_id;
-    std::vector<uint8_t> data;
-    size_t component_size = 0;
-
   public:
+    template <typename T> static std::unique_ptr<ComponentArray> create();
+    
     [[nodiscard]] size_t size() const;
     void reserve(size_t size);
     void resize(size_t new_size);
     void clear();
     void remove_index(size_t idx);
     void *get_ptr(size_t index);
-};
 
-template <typename T> class ComponentArray : public IComponentArray
-{
-  public:
-    ComponentArray();
-
-    T *get_data();
-    const T *get_data() const;
+private:
+    ComponentArray(MetaComponentId meta_id, size_t component_size);
+    MetaComponentId meta_id_;
+    size_t component_size_;
+    std::vector<uint8_t> data_;
 };
 
 struct MetaComponentArray {
-    using CreateArrayFn = std::unique_ptr<IComponentArray> (*)();
+    using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
     using CopyComponentFn = void (*)(void *dst, void *src);
     using MoveComponentFn = void (*)(void *dst, void *src);
 
@@ -98,9 +92,8 @@ class ComponentRegistry
         component_ids.insert({type_idx, meta_id});
 
         MetaComponentArray meta_array{
-            .create_array = []() -> std::unique_ptr<IComponentArray> {
-                return std::unique_ptr<IComponentArray>(
-                    new ComponentArray<T>());
+            .create_array = []() -> std::unique_ptr<ComponentArray> {
+                return ComponentArray::create<T>();
             },
             .copy_component =
                 [](void *dst, void *src) {
@@ -152,7 +145,7 @@ class Archetype
 
     std::unordered_map<EntityId, size_t> entities_to_idx;
     std::vector<EntityId> idx_to_entity;
-    std::unordered_map<MetaComponentId, std::unique_ptr<IComponentArray>>
+    std::unordered_map<MetaComponentId, std::unique_ptr<ComponentArray>>
         components;
     const ComponentMask mask_;
 

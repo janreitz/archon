@@ -9,20 +9,8 @@
 namespace ecs
 {
 
-template <typename T> ComponentArray<T>::ComponentArray()
-{
-    meta_id = ComponentRegistry::instance().get_meta_id<T>();
-    component_size = sizeof(T);
-}
-
-template <typename T> T *ComponentArray<T>::get_data()
-{
-    return static_cast<T *>(data);
-}
-
-template <typename T> const T *ComponentArray<T>::get_data() const
-{
-    return static_cast<const T *>(data);
+template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create() {
+    return std::unique_ptr<ComponentArray>(new ComponentArray(ComponentRegistry::instance().get_meta_id<T>(), sizeof(T)));
 }
 
 // Archetype implementation
