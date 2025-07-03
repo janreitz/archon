@@ -283,8 +283,7 @@ class World
     template <typename... Components> ComponentMask get_component_mask()
     {
         ComponentMask mask;
-        (mask.set(ComponentRegistry::instance()
-                      .get_meta_id<std::decay_t<Components>>()),
+        (mask.set(ComponentRegistry::instance().get_meta_id<Components>()),
          ...);
         return mask;
     }
