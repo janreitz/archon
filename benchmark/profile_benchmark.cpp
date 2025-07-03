@@ -41,7 +41,7 @@ void benchmark_ecs_two_components()
         dummy_accumulator = 0;
         ecs::Query<ComponentA, ComponentB>().each(world, [&](ComponentA &c1,
                                                              ComponentB &c2) {
-            dummy_accumulator +=
+            dummy_accumulator = dummy_accumulator +
                 benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(c1, c2);
         });
     }
@@ -80,7 +80,7 @@ void benchmark_baseline_soa()
     for (std::size_t iter = 0; iter < ITERATIONS; ++iter) {
         dummy_accumulator = 0;
         for (std::size_t i = 0; i < ENTITY_COUNT; ++i) {
-            dummy_accumulator +=
+            dummy_accumulator = dummy_accumulator +
                 benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
                     comp_a_data[i], comp_b_data[i]);
         }
