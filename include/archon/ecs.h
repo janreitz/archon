@@ -16,10 +16,27 @@
 
 namespace ecs
 {
+using EntityId = uint32_t;
 constexpr size_t MAX_COMPONENTS = 32;
 using ComponentMask = std::bitset<MAX_COMPONENTS>;
-using EntityId = uint32_t;
-using MetaComponentId = uint8_t;
+// This is the index into the ComponentMask
+// It's type is selected to be the smallest type 
+// that can represent MAX_COMPONENTS
+using MetaComponentId = decltype( []() {
+    constexpr auto bits_needed = std::bit_width(MAX_COMPONENTS);
+    
+    static_assert(bits_needed <= 64, "MAX_COMPONENT must fit within 64 bits");
+
+    if constexpr (bits_needed <= 8) {
+        return std::uint8_t{};
+    } else if constexpr (bits_needed <= 16) {
+        return std::uint16_t{};
+    } else if constexpr (bits_needed <= 32) {
+        return std::uint32_t{};
+    } else {
+        return std::uint64_t{};
+    }
+}());
 
 class ComponentRegistry;
 
