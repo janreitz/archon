@@ -32,9 +32,9 @@ void ComponentArray::reserve(size_t size)
     data_.reserve(size * component_size_);
 }
 
-void ComponentArray::remove_index(size_t idx)
+void ComponentArray::remove(size_t idx)
 {
-    assert(idx <= size() && "Index out of bounds in remove_index");
+    assert(idx <= size() && "Index out of bounds in remove");
     std::memcpy(
         // to idx
         data_.data() + (idx * component_size_),
@@ -102,7 +102,7 @@ void Archetype::remove_entity(EntityId entity)
 
     // update component arrays
     for (auto &[_, array] : components) {
-        array->remove_index(mid_index);
+        array->remove(mid_index);
     }
 
     assert(idx_to_entity.size() == entities_to_idx.size() &&

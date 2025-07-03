@@ -47,7 +47,7 @@ class ComponentArray
     void reserve(size_t size);
     void resize(size_t new_size);
     void clear();
-    void remove_index(size_t idx);
+    void remove(size_t idx);
     void *get_ptr(size_t index);
 
   private:
