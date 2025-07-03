@@ -110,19 +110,14 @@ class ComponentRegistry
 
     template <typename T> MetaComponentId get_meta_id() const
     {
-        auto it = component_ids.find(typeid(std::decay_t<T>));
-        if (it != component_ids.end()) {
-            return it->second;
-        }
-        throw std::runtime_error("Component type '" +
-                                 std::string(typeid(std::decay_t<T>).name()) +
-                                 "' not registered");
+        return get_meta_id(typeid(std::decay_t<T>));
     }
 
     MetaComponentId get_meta_id(std::type_index type_idx) const
     {
         auto it = component_ids.find(type_idx);
-        return it != component_ids.end() ? it->second : 0;
+        assert(it != component_ids.end() && "Component type not registered");
+        return it->second;
     }
 
     const MetaComponentArray &get_meta(MetaComponentId component_id) const
