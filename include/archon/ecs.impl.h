@@ -293,12 +293,28 @@ template <typename Component> Component &World::get_component(EntityId entity)
         entity);
 }
 
+template <typename Component>
+const Component &World::get_component(EntityId entity) const
+{
+    assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
+    return entity_to_archetype_.at(entity)->template get_component<Component>(
+        entity);
+}
+
 template <typename... Components>
 std::tuple<Components &...> World::get_components(EntityId entity)
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
     return entity_to_archetype_[entity]->template get_components<Components...>(
         entity);
+}
+
+template <typename... Components>
+std::tuple<const Components &...> World::get_components(EntityId entity) const
+{
+    assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
+    return entity_to_archetype_.at(entity)
+        ->template get_components<Components...>(entity);
 }
 
 template <typename Component> bool World::has_component(EntityId entity) const

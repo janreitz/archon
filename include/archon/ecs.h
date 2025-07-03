@@ -272,9 +272,13 @@ class World
     template <typename... Components> void remove_components(EntityId entity);
 
     template <typename Component> Component &get_component(EntityId entity);
+    template <typename Component>
+    const Component &get_component(EntityId entity) const;
 
     template <typename... Components>
     std::tuple<Components &...> get_components(EntityId entity);
+    template <typename... Components>
+    std::tuple<const Components &...> get_components(EntityId entity) const;
 
     template <typename Component> bool has_component(EntityId entity) const;
     template <typename... Components>
