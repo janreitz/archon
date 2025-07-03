@@ -2,6 +2,7 @@
 
 #include <array>
 #include <bitset>
+#include <cassert>
 #include <cstdint>
 #include <cstring> // std::memcpy
 #include <memory>
@@ -104,7 +105,7 @@ class ComponentRegistry
             .component_size = sizeof(T),
             .type_name = typeid(T).name()};
 
-        meta_data.insert({meta_id, meta_array});
+        meta_data.push_back(meta_array);
     }
 
     template <typename T> MetaComponentId get_meta_id() const
@@ -124,14 +125,14 @@ class ComponentRegistry
         return it != component_ids.end() ? it->second : 0;
     }
 
-    const MetaComponentArray *get_meta(MetaComponentId component_id) const
+    const MetaComponentArray &get_meta(MetaComponentId component_id) const
     {
-        auto it = meta_data.find(component_id);
-        return it != meta_data.end() ? &it->second : nullptr;
+        assert(component_id < meta_data.size());
+        return meta_data[component_id];
     }
 
   private:
-    std::unordered_map<MetaComponentId, MetaComponentArray> meta_data;
+    std::vector<MetaComponentArray> meta_data;
     std::unordered_map<std::type_index, MetaComponentId> component_ids;
     MetaComponentId next_id = 0;
 };

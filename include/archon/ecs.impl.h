@@ -202,10 +202,10 @@ void World::add_components(EntityId entity, Components &&...component)
         const size_t old_index = oldArchetype->entities_to_idx[entity];
         // Copy existing components from old to new archetype
         for (const auto &[comp_id, old_array] : oldArchetype->components) {
-            const auto *meta = ComponentRegistry::instance().get_meta(comp_id);
+            const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
 
             // Copy component data
-            meta->copy_component(
+            meta.copy_component(
                 target_archetype->components[comp_id]->get_ptr(new_idx),
                 old_array->get_ptr(old_index));
         }
@@ -265,8 +265,8 @@ template <typename... Components> void World::remove_components(EntityId entity)
         // Only copy components that exist in the target archetype (use
         // ComponentMask for faster lookup)
         if (target_mask.test(comp_id)) {
-            const auto *meta = ComponentRegistry::instance().get_meta(comp_id);
-            meta->copy_component(
+            const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
+            meta.copy_component(
                 target_archetype->components[comp_id]->get_ptr(new_idx),
                 old_array->get_ptr(old_idx));
         }

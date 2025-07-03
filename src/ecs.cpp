@@ -54,10 +54,10 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
 {
     for (size_t id = 0; id < mask_.size(); id++) {
         if (mask_.test(id)) {
-            const auto *meta = ComponentRegistry::instance().get_meta(
+            const auto &meta = ComponentRegistry::instance().get_meta(
                 static_cast<ecs::MetaComponentId>(id));
             components[static_cast<ecs::MetaComponentId>(id)] =
-                meta->create_array();
+                meta.create_array();
         }
     }
 }
@@ -146,11 +146,9 @@ void move_entity_between_archetypes(EntityId entity, Archetype *src,
     for (const auto &[comp_id, src_array] : src->components) {
         if (auto dst_it = dst->components.find(comp_id);
             dst_it != dst->components.end()) {
-            const auto *meta = ComponentRegistry::instance().get_meta(comp_id);
-            if (meta) {
-                meta->copy_component(dst_it->second->get_ptr(dst_idx),
-                                     src_array->get_ptr(src_idx));
-            }
+            const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
+            meta.copy_component(dst_it->second->get_ptr(dst_idx),
+                                src_array->get_ptr(src_idx));
         }
     }
 
