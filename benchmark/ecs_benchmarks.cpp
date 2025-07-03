@@ -110,8 +110,8 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
     uint64_t dummy_accumulator = 0; // To prevent optimization
 
     // --- Benchmark for iterating two components with the ECS API ---
-    BENCHMARK_ADVANCED("ECS Query: Iterate 2 Components")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("ECS Query: Iterate 2 Components")
+    (Catch::Benchmark::Chronometer meter)
     {
         ecs::World world;
         setup_world_two_components(world, ENTITY_COUNT_FOR_BENCHMARK);
@@ -130,8 +130,8 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
     };
 
     // --- Benchmark for AoS (Array of Structs) baseline ---
-    BENCHMARK_ADVANCED("Baseline: AoS std::vector<struct>")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("Baseline: AoS std::vector<struct>")
+    (Catch::Benchmark::Chronometer meter)
     {
         auto aos_data = setup_aos_data(ENTITY_COUNT_FOR_BENCHMARK);
 
@@ -147,8 +147,8 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
     };
 
     // --- Benchmark for true SoA (Structure of Arrays) baseline ---
-    BENCHMARK_ADVANCED("Baseline: SoA separate std::vectors")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("Baseline: SoA separate std::vectors")
+    (Catch::Benchmark::Chronometer meter)
     {
         auto soa_data = setup_soa_data(ENTITY_COUNT_FOR_BENCHMARK);
 
@@ -164,8 +164,8 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
     };
 
     // --- Benchmark for C-style raw arrays baseline ---
-    BENCHMARK_ADVANCED("Baseline: Raw C arrays")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("Baseline: Raw C arrays")
+    (Catch::Benchmark::Chronometer meter)
     {
         RawArrayBenchmark raw_data(ENTITY_COUNT_FOR_BENCHMARK);
 
@@ -181,8 +181,8 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
     };
 
     // --- Benchmark for iterating one component with the ECS API ---
-    BENCHMARK_ADVANCED("ECS Query: Iterate 1 Component")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("ECS Query: Iterate 1 Component")
+    (Catch::Benchmark::Chronometer meter)
     {
         ecs::World world;
         ecs::ComponentRegistry::instance().register_component<ComponentA>();
@@ -262,8 +262,8 @@ TEST_CASE("ECS Component Type Scaling", "[benchmark][ecs][scaling]")
     };
 
     // Test with 16 component types
-    BENCHMARK_ADVANCED("16 Component Types")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("16 Component Types")
+    (Catch::Benchmark::Chronometer meter)
     {
         ecs::World world;
         benchmark::setup_world_with_component_types<16, COMPONENT_SIZE>(
@@ -273,8 +273,8 @@ TEST_CASE("ECS Component Type Scaling", "[benchmark][ecs][scaling]")
     };
 
     // Test with 32 component types (maximum)
-    BENCHMARK_ADVANCED("32 Component Types")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("32 Component Types")
+    (Catch::Benchmark::Chronometer meter)
     {
         ecs::World world;
         benchmark::setup_world_with_component_types<32, COMPONENT_SIZE>(
@@ -292,8 +292,8 @@ TEST_CASE("ECS Setup Performance Comparison", "[benchmark][ecs][setup]")
         8; // Smaller count for faster comparison
 
     // Realistic batch setup (all components added at once)
-    BENCHMARK_ADVANCED("Batch Setup: 8 Components")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("Batch Setup: 8 Components")
+    (Catch::Benchmark::Chronometer meter)
     {
         meter.measure([] {
             ecs::World world;
@@ -306,8 +306,8 @@ TEST_CASE("ECS Setup Performance Comparison", "[benchmark][ecs][setup]")
     };
 
     // Migration-heavy setup (components added one by one)
-    BENCHMARK_ADVANCED("Migration Setup: 8 Components")(
-        Catch::Benchmark::Chronometer meter)
+    BENCHMARK_ADVANCED("Migration Setup: 8 Components")
+    (Catch::Benchmark::Chronometer meter)
     {
         meter.measure([] {
             ecs::World world;

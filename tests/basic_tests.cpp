@@ -25,7 +25,9 @@ TEST_CASE("Basic entity and component operations", "[ecs]")
     SECTION("Entity creation")
     {
         auto entity = world.create_entity();
-        REQUIRE(entity != std::numeric_limits<ecs::EntityId>::max()); // Check for valid entity ID
+        REQUIRE(entity !=
+                std::numeric_limits<ecs::EntityId>::max()); // Check for valid
+                                                            // entity ID
     }
 
     SECTION("Adding components")
@@ -97,7 +99,8 @@ TEST_CASE("Basic querying", "[ecs]")
     {
         int count = 0;
         ecs::Query<Position>().each(
-            world, [&](Position& /*pos*/, ecs::EntityId /*entity*/) { count++; });
+            world,
+            [&](Position & /*pos*/, ecs::EntityId /*entity*/) { count++; });
         REQUIRE(count == 3);
     }
 }
@@ -206,9 +209,8 @@ TEST_CASE("Component removal operations", "[ecs]")
 
         // Initially, 2 entities should have both Position and Velocity
         int count_before = 0;
-        ecs::Query<Position, Velocity>().each(world, [&](Position&, Velocity&) {
-            count_before++;
-        });
+        ecs::Query<Position, Velocity>().each(
+            world, [&](Position &, Velocity &) { count_before++; });
         REQUIRE(count_before == 2);
 
         // Remove Velocity from one entity
@@ -216,16 +218,13 @@ TEST_CASE("Component removal operations", "[ecs]")
 
         // Now only 1 entity should have both components
         int count_after = 0;
-        ecs::Query<Position, Velocity>().each(world, [&](Position&, Velocity&) {
-            count_after++;
-        });
+        ecs::Query<Position, Velocity>().each(
+            world, [&](Position &, Velocity &) { count_after++; });
         REQUIRE(count_after == 1);
 
         // But all 3 entities should still have Position
         int pos_count = 0;
-        ecs::Query<Position>().each(world, [&](Position&) {
-            pos_count++;
-        });
+        ecs::Query<Position>().each(world, [&](Position &) { pos_count++; });
         REQUIRE(pos_count == 3);
     }
 }

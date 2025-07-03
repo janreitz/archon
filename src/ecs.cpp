@@ -13,7 +13,10 @@
 namespace ecs
 {
 
-ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size): meta_id_(meta_id), component_size_(component_size){}
+ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size)
+    : meta_id_(meta_id), component_size_(component_size)
+{
+}
 
 void ComponentArray::resize(size_t new_size)
 {
@@ -168,4 +171,4 @@ Archetype *World::get_or_create_archetype(const ComponentMask &mask)
         component_mask_to_archetypes_.emplace(mask, std::move(new_arch));
     return kv_it->second.get();
 }
-}
+} // namespace ecs

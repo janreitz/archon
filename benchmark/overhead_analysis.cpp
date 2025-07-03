@@ -41,8 +41,9 @@ void test_component_access_patterns()
 
     for (std::size_t iter = 0; iter < ITERATIONS; ++iter) {
         query.each(world, [&](ComponentA &comp_a, ComponentB &comp_b) {
-            dummy = dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
-                comp_a, comp_b);
+            dummy =
+                dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
+                            comp_a, comp_b);
         });
     }
 
@@ -69,8 +70,9 @@ void test_component_access_patterns()
 
     for (std::size_t iter = 0; iter < ITERATIONS; ++iter) {
         for (std::size_t i = 0; i < ENTITY_COUNT; ++i) {
-            dummy = dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
-                comp_a_data[i], comp_b_data[i]);
+            dummy =
+                dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
+                            comp_a_data[i], comp_b_data[i]);
         }
     }
 
@@ -98,8 +100,9 @@ void test_component_access_patterns()
 
     for (std::size_t iter = 0; iter < ITERATIONS; ++iter) {
         for (std::size_t i = 0; i < ENTITY_COUNT; ++i) {
-            dummy = dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
-                aos_data[i].comp_a, aos_data[i].comp_b);
+            dummy =
+                dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
+                            aos_data[i].comp_a, aos_data[i].comp_b);
         }
     }
 
@@ -156,8 +159,9 @@ void test_memory_access_patterns()
 
     for (std::size_t iter = 0; iter < ITERATIONS; ++iter) {
         query.each(world, [&](ComponentA &comp_a, ComponentB &comp_b) {
-            dummy = dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
-                comp_a, comp_b);
+            dummy =
+                dummy + benchmark::elementwise_addition<COMPONENT_DATA_SIZE>(
+                            comp_a, comp_b);
         });
     }
 
@@ -185,7 +189,7 @@ void test_memory_access_patterns()
     for (std::size_t iter = 0; iter < ITERATIONS; ++iter) {
         for (std::size_t i = 0; i < ENTITY_COUNT; ++i) {
             dummy = dummy + comp_a_data[i].data_[0] +
-                     comp_b_data[i].data_[0]; // Minimal access
+                    comp_b_data[i].data_[0]; // Minimal access
         }
     }
 

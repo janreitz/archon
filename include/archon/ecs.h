@@ -20,11 +20,11 @@ using EntityId = uint32_t;
 constexpr size_t MAX_COMPONENTS = 32;
 using ComponentMask = std::bitset<MAX_COMPONENTS>;
 // This is the index into the ComponentMask
-// It's type is selected to be the smallest type 
+// It's type is selected to be the smallest type
 // that can represent MAX_COMPONENTS
-using MetaComponentId = decltype( []() {
+using MetaComponentId = decltype([]() {
     constexpr auto bits_needed = std::bit_width(MAX_COMPONENTS);
-    
+
     static_assert(bits_needed <= 64, "MAX_COMPONENT must fit within 64 bits");
 
     if constexpr (bits_needed <= 8) {
@@ -44,7 +44,7 @@ class ComponentArray
 {
   public:
     template <typename T> static std::unique_ptr<ComponentArray> create();
-    
+
     [[nodiscard]] size_t size() const;
     void reserve(size_t size);
     void resize(size_t new_size);
@@ -52,7 +52,7 @@ class ComponentArray
     void remove_index(size_t idx);
     void *get_ptr(size_t index);
 
-private:
+  private:
     ComponentArray(MetaComponentId meta_id, size_t component_size);
     MetaComponentId meta_id_;
     size_t component_size_;
