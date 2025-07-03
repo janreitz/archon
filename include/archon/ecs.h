@@ -38,8 +38,6 @@ using MetaComponentId = decltype([]() {
     }
 }());
 
-class ComponentRegistry;
-
 class ComponentArray
 {
   public:
