@@ -62,10 +62,10 @@ int main() {
 ### Query System
 
 The query system supports:
-- Template-based queries: `ecs::Query<Position, Velocity>()`
-- Optional entity parameter: Functions can optionally take `ecs::EntityId` as last parameter
-- Filtering: `.with<Component>()` and `.without<Component>()` methods
-- Const-correctness: Const world references require const component parameters
+- **Template-based queries**: `ecs::Query<Position, Velocity>()`
+- **Optional entity parameter**: Functions can optionally take `ecs::EntityId` as last parameter
+- **Filtering**: `.with<Component>()` and `.without<Component>()` methods
+- **Const-correctness**: Const world references require const component parameters
 
 ```cpp
 // Lambda without entity
@@ -103,6 +103,10 @@ ecs::Query<Position>()
         // Process all non-enemy positions
     });
 ```
+
+### Type-Trait Based Component Operations
+Archon automatically selects optimal operations to transition between archetypes based on component type traits. It uses `std::memcpy` for `std::is_trivially_copyable_v<T>`, moves when it's safe (`std::is_nothrow_move_constructible_v<T>`) and only calls copy constructors as fallback.
+
 
 ## Building and Testing
 
