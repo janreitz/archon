@@ -11,9 +11,9 @@ namespace ecs
 
 template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 {
-    return std::unique_ptr<ComponentArray>(
-        new ComponentArray(ComponentRegistry::instance().get_meta_id<T>(),
-                           sizeof(T), std::is_trivially_copyable_v<T>));
+    const auto meta_id = ComponentRegistry::instance().get_meta_id<T>();
+    const auto &meta = ComponentRegistry::instance().get_meta(meta_id);
+    return std::unique_ptr<ComponentArray>(new ComponentArray(meta_id, meta));
 }
 
 // Archetype implementation
@@ -200,9 +200,10 @@ void World::add_components(EntityId entity, Components &&...component)
     (
         [&]() {
             using DecayedType = std::decay_t<Components>;
-            auto &component_ptr =
-                target_archetype->template get_component<DecayedType>(new_idx);
-            component_ptr = std::forward<Components>(component);
+            const MetaComponentId id =
+                ComponentRegistry::instance().get_meta_id<DecayedType>();
+            auto *ptr = target_archetype->components[id]->get_ptr(new_idx);
+            new (ptr) DecayedType(std::forward<Components>(component));
         }(),
         ...);
 
@@ -215,17 +216,20 @@ void World::add_components(EntityId entity, Components &&...component)
             const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
 
             // Select appropriate transition mechanism based on type traits
+            // Use placement new for construction, not assignment
             if (meta.is_trivially_copy_assignable_) {
                 std::memcpy(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     current_archetype->components[comp_id]->get_ptr(old_index),
                     meta.component_size);
             } else if (meta.is_nothrow_move_assignable_) {
-                meta.move_component(
+                meta.move_construct(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     old_array->get_ptr(old_index));
+                // Destroy the moved-from object
+                meta.destroy_component(old_array->get_ptr(old_index));
             } else {
-                meta.copy_component(
+                meta.copy_construct(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     old_array->get_ptr(old_index));
             }

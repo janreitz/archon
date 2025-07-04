@@ -39,6 +39,27 @@ using MetaComponentId = decltype([]() {
     }
 }());
 
+// Forward declaration
+class ComponentArray;
+
+struct MetaComponentArray {
+    using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
+    using CopyComponentFn = void (*)(void *dst, void *src);
+    using MoveComponentFn = void (*)(void *dst, void *src);
+
+    CreateArrayFn create_array;
+    CopyComponentFn copy_component;
+    MoveComponentFn move_component;
+    CopyComponentFn copy_construct;
+    MoveComponentFn move_construct;
+    void (*destroy_component)(void *ptr);
+    size_t component_size;
+    std::string_view type_name;
+    bool is_trivially_copy_assignable_;
+    bool is_nothrow_move_assignable_;
+    bool is_trivially_destructible_;
+};
+
 class ComponentArray
 {
   public:
@@ -65,25 +86,10 @@ class ComponentArray
     }
 
   private:
-    ComponentArray(MetaComponentId meta_id, size_t component_size, bool is_trivially_copyable);
+    ComponentArray(MetaComponentId meta_id, const MetaComponentArray &meta);
     MetaComponentId meta_id_;
-    size_t component_size_;
-    bool is_trivially_copy_assignable_;
+    MetaComponentArray meta_;
     std::vector<uint8_t> data_;
-};
-
-struct MetaComponentArray {
-    using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
-    using CopyComponentFn = void (*)(void *dst, void *src);
-    using MoveComponentFn = void (*)(void *dst, void *src);
-
-    CreateArrayFn create_array;
-    CopyComponentFn copy_component;
-    MoveComponentFn move_component;
-    size_t component_size;
-    std::string_view type_name;
-    bool is_trivially_copy_assignable_;
-    bool is_nothrow_move_assignable_;
 };
 
 class ComponentRegistry
@@ -114,11 +120,21 @@ class ComponentRegistry
                 [](void *dst, void *src) {
                     *static_cast<T *>(dst) = std::move(*static_cast<T *>(src));
                 },
+            .copy_construct =
+                [](void *dst, void *src) {
+                    new (dst) T(*static_cast<T *>(src));
+                },
+            .move_construct =
+                [](void *dst, void *src) {
+                    new (dst) T(std::move(*static_cast<T *>(src)));
+                },
+            .destroy_component = [](void *ptr) { static_cast<T *>(ptr)->~T(); },
             .component_size = sizeof(T),
             .type_name = typeid(T).name(),
-            .is_trivially_copy_assignable_ = std::is_trivially_copy_assignable_v<T>,
-            .is_nothrow_move_assignable_ = std::is_nothrow_move_assignable_v<T>
-        };
+            .is_trivially_copy_assignable_ =
+                std::is_trivially_copy_assignable_v<T>,
+            .is_nothrow_move_assignable_ = std::is_nothrow_move_assignable_v<T>,
+            .is_trivially_destructible_ = std::is_trivially_destructible_v<T>};
 
         meta_data.push_back(meta_array);
     }

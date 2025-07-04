@@ -14,48 +14,106 @@
 namespace ecs
 {
 
-ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size,
-                               bool is_trivially_copyable)
-    : meta_id_(meta_id), component_size_(component_size),
-      is_trivially_copy_assignable_(is_trivially_copyable)
+ComponentArray::ComponentArray(MetaComponentId meta_id,
+                               const MetaComponentArray &meta)
+    : meta_id_(meta_id), meta_(meta)
 {
 }
 
 void ComponentArray::resize(size_t new_size)
 {
-    data_.resize(new_size * component_size_);
+    const size_t current_size = size();
+    const size_t new_byte_size = new_size * meta_.component_size;
+
+    if (new_size == current_size) {
+        return; // No change needed
+    }
+
+    if (new_size < current_size) {
+        // Shrinking - destroy extra objects first
+        if (!meta_.is_trivially_destructible_) {
+            for (size_t i = new_size; i < current_size; ++i) {
+                meta_.destroy_component(data_.data() +
+                                        (i * meta_.component_size));
+            }
+        }
+        data_.resize(new_byte_size);
+    } else {
+        // Growing - handle potential reallocation carefully
+        if (meta_.is_trivially_copy_assignable_) {
+            // For trivial types, simple resize works
+            data_.resize(new_byte_size);
+        } else {
+            // For non-trivial types, we need to handle reallocation properly
+            std::vector<uint8_t> new_data;
+            new_data.resize(new_byte_size);
+
+            // Move existing objects to new location
+            for (size_t i = 0; i < current_size; ++i) {
+                meta_.move_construct(new_data.data() +
+                                         (i * meta_.component_size),
+                                     data_.data() + (i * meta_.component_size));
+                meta_.destroy_component(data_.data() +
+                                        (i * meta_.component_size));
+            }
+
+            // Replace old data with new data
+            data_ = std::move(new_data);
+        }
+    }
 }
 
 void ComponentArray::clear() { data_.clear(); }
 
-size_t ComponentArray::size() const { return data_.size() / component_size_; }
+size_t ComponentArray::size() const
+{
+    return data_.size() / meta_.component_size;
+}
 
 void ComponentArray::reserve(size_t size)
 {
-    data_.reserve(size * component_size_);
+    data_.reserve(size * meta_.component_size);
 }
 
 void ComponentArray::remove(size_t idx)
 {
     assert(idx < size() && "Index out of bounds in remove");
-    if (is_trivially_copy_assignable_) {
-        std::memcpy(
-            // to idx
-            data_.data() + (idx * component_size_),
-            // from idx
-            data_.data() + ((size() - 1) * component_size_), component_size_);
+
+    const size_t last_idx = size() - 1;
+
+    if (idx != last_idx) {
+        // Only need to move if we're not removing the last element
+        if (meta_.is_trivially_copy_assignable_) {
+            std::memcpy(
+                // to idx
+                data_.data() + (idx * meta_.component_size),
+                // from last element
+                data_.data() + (last_idx * meta_.component_size),
+                meta_.component_size);
+        } else {
+            // Destroy the element we're removing
+            meta_.destroy_component(data_.data() +
+                                    (idx * meta_.component_size));
+            // Move the last element to fill the gap
+            meta_.move_construct(data_.data() + (idx * meta_.component_size),
+                                 data_.data() +
+                                     (last_idx * meta_.component_size));
+        }
     } else {
-        ComponentRegistry::instance().get_meta(meta_id_).copy_component(
-            data_.data() + (idx * component_size_),
-            data_.data() + ((size() - 1) * component_size_));
+        // Removing the last element - just need to destroy it for non-trivial
+        // types
+        if (!meta_.is_trivially_destructible_) {
+            meta_.destroy_component(data_.data() +
+                                    (idx * meta_.component_size));
+        }
     }
 
-    data_.resize(data_.size() - component_size_);
+    data_.resize(data_.size() - meta_.component_size);
 }
 
 void *ComponentArray::get_ptr(size_t index)
 {
-    return data_.data() + (index * component_size_);
+    return data_.data() + (index * meta_.component_size);
 }
 
 ComponentRegistry &ComponentRegistry::instance()
