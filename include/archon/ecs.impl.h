@@ -182,12 +182,14 @@ void World::add_components(EntityId entity, Components &&...component)
     Archetype *current_archetype = entity_to_archetype_[entity];
 
     // Find or create appropriate archetype
-    ComponentMask target_mask =
+    const ComponentMask current_mask =
         current_archetype ? current_archetype->mask_ : ComponentMask();
 
     // Add the new component types to the mask
     const auto add_mask = get_component_mask<Components...>();
-    target_mask |= add_mask;
+    const ComponentMask target_mask = current_mask | add_mask;
+
+    assert(current_mask != target_mask && "Adding Components twice");
 
     auto *target_archetype = get_or_create_archetype(target_mask);
 
