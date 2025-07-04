@@ -178,11 +178,11 @@ void World::add_components(EntityId entity, Components &&...component)
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
-    Archetype *oldArchetype = entity_to_archetype_[entity];
+    Archetype *current_archetype = entity_to_archetype_[entity];
 
     // Find or create appropriate archetype
     ComponentMask target_mask =
-        oldArchetype ? oldArchetype->mask_ : ComponentMask();
+        current_archetype ? current_archetype->mask_ : ComponentMask();
 
     // Add the new component types to the mask
     const auto add_mask = get_component_mask<Components...>();
@@ -203,10 +203,10 @@ void World::add_components(EntityId entity, Components &&...component)
         }(),
         ...);
 
-    if (oldArchetype) {
-        const size_t old_index = oldArchetype->entities_to_idx[entity];
+    if (current_archetype) {
+        const size_t old_index = current_archetype->entities_to_idx[entity];
         // Copy existing components from old to new archetype
-        for (const auto &[comp_id, old_array] : oldArchetype->components) {
+        for (const auto &[comp_id, old_array] : current_archetype->components) {
             const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
 
             // Copy component data
@@ -214,7 +214,7 @@ void World::add_components(EntityId entity, Components &&...component)
                 target_archetype->components[comp_id]->get_ptr(new_idx),
                 old_array->get_ptr(old_index));
         }
-        oldArchetype->remove_entity(entity);
+        current_archetype->remove_entity(entity);
     }
 
     // Update entity mapping
