@@ -17,7 +17,7 @@ namespace ecs
 ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size,
                                bool is_trivially_copyable)
     : meta_id_(meta_id), component_size_(component_size),
-      is_trivially_copyable_(is_trivially_copyable)
+      is_trivially_copy_assignable_(is_trivially_copyable)
 {
 }
 
@@ -38,7 +38,7 @@ void ComponentArray::reserve(size_t size)
 void ComponentArray::remove(size_t idx)
 {
     assert(idx < size() && "Index out of bounds in remove");
-    if (is_trivially_copyable_) {
+    if (is_trivially_copy_assignable_) {
         std::memcpy(
             // to idx
             data_.data() + (idx * component_size_),

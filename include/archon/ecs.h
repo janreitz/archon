@@ -68,7 +68,7 @@ class ComponentArray
     ComponentArray(MetaComponentId meta_id, size_t component_size, bool is_trivially_copyable);
     MetaComponentId meta_id_;
     size_t component_size_;
-    bool is_trivially_copyable_;
+    bool is_trivially_copy_assignable_;
     std::vector<uint8_t> data_;
 };
 
@@ -82,6 +82,8 @@ struct MetaComponentArray {
     MoveComponentFn move_component;
     size_t component_size;
     std::string_view type_name;
+    bool is_trivially_copy_assignable_;
+    bool is_nothrow_move_assignable_;
 };
 
 class ComponentRegistry
@@ -113,7 +115,10 @@ class ComponentRegistry
                     *static_cast<T *>(dst) = std::move(*static_cast<T *>(src));
                 },
             .component_size = sizeof(T),
-            .type_name = typeid(T).name()};
+            .type_name = typeid(T).name(),
+            .is_trivially_copy_assignable_ = std::is_trivially_copy_assignable_v<T>,
+            .is_nothrow_move_assignable_ = std::is_nothrow_move_assignable_v<T>
+        };
 
         meta_data.push_back(meta_array);
     }

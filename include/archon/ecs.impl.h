@@ -11,8 +11,9 @@ namespace ecs
 
 template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 {
-    return std::unique_ptr<ComponentArray>(new ComponentArray(
-        ComponentRegistry::instance().get_meta_id<T>(), sizeof(T), std::is_trivially_copyable_v<T>));
+    return std::unique_ptr<ComponentArray>(
+        new ComponentArray(ComponentRegistry::instance().get_meta_id<T>(),
+                           sizeof(T), std::is_trivially_copyable_v<T>));
 }
 
 // Archetype implementation
@@ -193,7 +194,9 @@ void World::add_components(EntityId entity, Components &&...component)
     // Add entity to target archetype
     const size_t new_idx = target_archetype->add_entity(entity);
 
-    // Move all components into place
+    // Move or copy new components into place
+    // Compile-time resolution via fold expression is possible,
+    // because new component types are given
     (
         [&]() {
             using DecayedType = std::decay_t<Components>;
@@ -203,16 +206,29 @@ void World::add_components(EntityId entity, Components &&...component)
         }(),
         ...);
 
+    // Copy existing components from old to new archetype
+    // Runtime MetaId Lookup is required, because the old component types
+    // are not directly available
     if (current_archetype) {
         const size_t old_index = current_archetype->entities_to_idx[entity];
-        // Copy existing components from old to new archetype
         for (const auto &[comp_id, old_array] : current_archetype->components) {
             const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
 
-            // Copy component data
-            meta.copy_component(
-                target_archetype->components[comp_id]->get_ptr(new_idx),
-                old_array->get_ptr(old_index));
+            if (meta.is_trivially_copy_assignable_) {
+                std::memcpy(
+                    target_archetype->components[comp_id]->data()[new_idx],
+                    current_archetype->components[comp_id]->data()[old_index],
+                    meta.component_size);
+            } else if (meta.is_nothrow_move_assignable_) {
+                meta.move_component(
+                    target_archetype->components[comp_id]->get_ptr(new_idx),
+                    old_array->get_ptr(old_index));
+            } else {
+                // Copy component data
+                meta.copy_component(
+                    target_archetype->components[comp_id]->get_ptr(new_idx),
+                    old_array->get_ptr(old_index));
+            }
         }
         current_archetype->remove_entity(entity);
     }
