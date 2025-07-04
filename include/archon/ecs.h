@@ -164,10 +164,6 @@ class Archetype
     without_component(const MetaComponentId &remove_comp_id) const;
 };
 
-void move_entity_between_archetypes(EntityId entity, Archetype *src,
-                                    size_t src_idx, Archetype *dst,
-                                    size_t dst_idx);
-
 // Helper to get parameter types of a function
 template <typename T> struct function_traits;
 

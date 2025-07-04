@@ -155,27 +155,6 @@ Archetype::without_component(const MetaComponentId &remove_comp_id) const
     return std::make_unique<Archetype>(new_mask);
 }
 
-void move_entity_between_archetypes(EntityId entity, Archetype *src,
-                                    size_t src_idx, Archetype *dst,
-                                    size_t dst_idx)
-{
-#ifdef TRACY_ENABLE
-    ZoneScoped;
-#endif
-    // Copy components that exist in both archetypes
-    for (const auto &[comp_id, src_array] : src->components) {
-        if (auto dst_it = dst->components.find(comp_id);
-            dst_it != dst->components.end()) {
-            const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
-            meta.copy_component(dst_it->second->get_ptr(dst_idx),
-                                src_array->get_ptr(src_idx));
-        }
-    }
-
-    // Remove from source archetype
-    src->remove_entity(entity);
-}
-
 Archetype *World::get_or_create_archetype(const ComponentMask &mask)
 {
     if (auto kv_it = component_mask_to_archetypes_.find(mask);
