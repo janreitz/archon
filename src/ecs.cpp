@@ -63,7 +63,16 @@ void ComponentArray::resize(size_t new_size)
     }
 }
 
-void ComponentArray::clear() { data_.clear(); }
+void ComponentArray::clear()
+{
+    if (!meta_.is_trivially_destructible_) {
+        const size_t current_size = size();
+        for (size_t i = 0; i < current_size; ++i) {
+            meta_.destroy_component(data_.data() + (i * meta_.component_size));
+        }
+    }
+    data_.clear();
+}
 
 size_t ComponentArray::size() const
 {
