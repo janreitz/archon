@@ -214,17 +214,17 @@ void World::add_components(EntityId entity, Components &&...component)
         for (const auto &[comp_id, old_array] : current_archetype->components) {
             const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
 
+            // Select appropriate transition mechanism based on type traits
             if (meta.is_trivially_copy_assignable_) {
                 std::memcpy(
-                    target_archetype->components[comp_id]->data()[new_idx],
-                    current_archetype->components[comp_id]->data()[old_index],
+                    target_archetype->components[comp_id]->get_ptr(new_idx),
+                    current_archetype->components[comp_id]->get_ptr(old_index),
                     meta.component_size);
             } else if (meta.is_nothrow_move_assignable_) {
                 meta.move_component(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     old_array->get_ptr(old_index));
             } else {
-                // Copy component data
                 meta.copy_component(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     old_array->get_ptr(old_index));
