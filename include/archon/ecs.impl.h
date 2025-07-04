@@ -194,14 +194,12 @@ void World::add_components(EntityId entity, Components &&...component)
     const size_t new_idx = target_archetype->add_entity(entity);
 
     // Move all components into place
-    int component_index = 0;
     (
         [&]() {
             using DecayedType = std::decay_t<Components>;
             auto &component_ptr =
                 target_archetype->template get_component<DecayedType>(new_idx);
             component_ptr = std::forward<Components>(component);
-            component_index++;
         }(),
         ...);
 
