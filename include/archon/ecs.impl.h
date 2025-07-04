@@ -12,7 +12,7 @@ namespace ecs
 template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 {
     return std::unique_ptr<ComponentArray>(new ComponentArray(
-        ComponentRegistry::instance().get_meta_id<T>(), sizeof(T)));
+        ComponentRegistry::instance().get_meta_id<T>(), sizeof(T), std::is_trivially_copyable_v<T>));
 }
 
 // Archetype implementation

@@ -65,9 +65,10 @@ class ComponentArray
     }
 
   private:
-    ComponentArray(MetaComponentId meta_id, size_t component_size);
+    ComponentArray(MetaComponentId meta_id, size_t component_size, bool is_trivially_copyable);
     MetaComponentId meta_id_;
     size_t component_size_;
+    bool is_trivially_copyable_;
     std::vector<uint8_t> data_;
 };
 

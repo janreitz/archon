@@ -14,8 +14,10 @@
 namespace ecs
 {
 
-ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size)
-    : meta_id_(meta_id), component_size_(component_size)
+ComponentArray::ComponentArray(MetaComponentId meta_id, size_t component_size,
+                               bool is_trivially_copyable)
+    : meta_id_(meta_id), component_size_(component_size),
+      is_trivially_copyable_(is_trivially_copyable)
 {
 }
 
@@ -35,12 +37,19 @@ void ComponentArray::reserve(size_t size)
 
 void ComponentArray::remove(size_t idx)
 {
-    assert(idx <= size() && "Index out of bounds in remove");
-    std::memcpy(
-        // to idx
-        data_.data() + (idx * component_size_),
-        // from idx
-        data_.data() + ((size() - 1) * component_size_), component_size_);
+    assert(idx < size() && "Index out of bounds in remove");
+    if (is_trivially_copyable_) {
+        std::memcpy(
+            // to idx
+            data_.data() + (idx * component_size_),
+            // from idx
+            data_.data() + ((size() - 1) * component_size_), component_size_);
+    } else {
+        ComponentRegistry::instance().get_meta(meta_id_).copy_component(
+            data_.data() + (idx * component_size_),
+            data_.data() + ((size() - 1) * component_size_));
+    }
+
     data_.resize(data_.size() - component_size_);
 }
 
