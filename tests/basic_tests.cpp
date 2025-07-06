@@ -57,9 +57,9 @@ struct NonTrivialComponent {
 TEST_CASE("Basic entity and component operations", "[ecs]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<Position>();
-    ecs::ComponentRegistry::instance().register_component<Velocity>();
-    ecs::ComponentRegistry::instance().register_component<Health>();
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Health>();
 
     SECTION("Entity creation")
     {
@@ -95,8 +95,8 @@ TEST_CASE("Basic entity and component operations", "[ecs]")
 TEST_CASE("Basic querying", "[ecs]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<Position>();
-    ecs::ComponentRegistry::instance().register_component<Velocity>();
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
 
     // Create some test entities
     auto e1 = world.create_entity();
@@ -144,9 +144,9 @@ TEST_CASE("Basic querying", "[ecs]")
 TEST_CASE("Component removal operations", "[ecs]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<Position>();
-    ecs::ComponentRegistry::instance().register_component<Velocity>();
-    ecs::ComponentRegistry::instance().register_component<Health>();
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Health>();
 
     SECTION("Remove single component")
     {
@@ -259,9 +259,8 @@ TEST_CASE("Archetype transitions with different component types",
           "[ecs][archetype]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<TrivialComponent>();
-    ecs::ComponentRegistry::instance()
-        .register_component<NonTrivialComponent>();
+    ecs::register_component<TrivialComponent>();
+    ecs::register_component<NonTrivialComponent>();
 
     SECTION("Trivial component transition uses memcpy")
     {
@@ -319,9 +318,8 @@ TEST_CASE("Component array removal with different types",
           "[ecs][component_array]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<TrivialComponent>();
-    ecs::ComponentRegistry::instance()
-        .register_component<NonTrivialComponent>();
+    ecs::register_component<TrivialComponent>();
+    ecs::register_component<NonTrivialComponent>();
 
     SECTION("Trivial component removal")
     {
@@ -372,9 +370,8 @@ TEST_CASE("Component array removal with different types",
 TEST_CASE("Complex archetype transition scenarios", "[ecs][archetype]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<TrivialComponent>();
-    ecs::ComponentRegistry::instance()
-        .register_component<NonTrivialComponent>();
+    ecs::register_component<TrivialComponent>();
+    ecs::register_component<NonTrivialComponent>();
 
     SECTION("Add components to entity with existing components")
     {
@@ -456,9 +453,8 @@ TEST_CASE("Complex archetype transition scenarios", "[ecs][archetype]")
 TEST_CASE("Edge cases and error conditions", "[ecs][archetype]")
 {
     ecs::World world;
-    ecs::ComponentRegistry::instance().register_component<TrivialComponent>();
-    ecs::ComponentRegistry::instance()
-        .register_component<NonTrivialComponent>();
+    ecs::register_component<TrivialComponent>();
+    ecs::register_component<NonTrivialComponent>();
 
     SECTION("Remove from empty archetype")
     {
@@ -482,8 +478,8 @@ TEST_CASE("Edge cases and error conditions", "[ecs][archetype]")
             double data[10];
         };
 
-        ecs::ComponentRegistry::instance().register_component<SmallComponent>();
-        ecs::ComponentRegistry::instance().register_component<LargeComponent>();
+        ecs::register_component<SmallComponent>();
+        ecs::register_component<LargeComponent>();
 
         auto entity = world.create_entity();
         world.add_components(entity, SmallComponent{'A'});

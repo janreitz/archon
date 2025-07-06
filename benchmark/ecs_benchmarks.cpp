@@ -22,8 +22,8 @@ void setup_world_two_components(ecs::World &world, std::size_t entity_count)
 {
     // Ensure components are registered (only needs to happen once, but safe to
     // call multiple times)
-    ecs::ComponentRegistry::instance().register_component<ComponentA>();
-    ecs::ComponentRegistry::instance().register_component<ComponentB>();
+    ecs::register_component<ComponentA>();
+    ecs::register_component<ComponentB>();
     for (std::size_t i = 0; i < entity_count; ++i) {
         auto e = world.create_entity();
         world.add_components(
@@ -185,7 +185,7 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
     (Catch::Benchmark::Chronometer meter)
     {
         ecs::World world;
-        ecs::ComponentRegistry::instance().register_component<ComponentA>();
+        ecs::register_component<ComponentA>();
         for (std::size_t i = 0; i < ENTITY_COUNT_FOR_BENCHMARK; ++i) {
             auto e = world.create_entity();
             world.add_components(

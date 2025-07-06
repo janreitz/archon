@@ -51,19 +51,19 @@ struct ComplexComponent {
 
 TEST_CASE("ComponentArray basic operations", "[component_array]")
 {
-    ecs::ComponentRegistry::instance().register_component<SimpleComponent>();
-    ecs::ComponentRegistry::instance().register_component<ComplexComponent>();
+    ecs::register_component<SimpleComponent>();
+    ecs::register_component<ComplexComponent>();
 
     SECTION("Create ComponentArray for simple type")
     {
-        auto array = ecs::ComponentArray::create<SimpleComponent>();
+        auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
         REQUIRE(array != nullptr);
         REQUIRE(array->size() == 0);
     }
 
     SECTION("Create ComponentArray for complex type")
     {
-        auto array = ecs::ComponentArray::create<ComplexComponent>();
+        auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
         REQUIRE(array != nullptr);
         REQUIRE(array->size() == 0);
     }
@@ -71,12 +71,12 @@ TEST_CASE("ComponentArray basic operations", "[component_array]")
 
 TEST_CASE("ComponentArray add operations", "[component_array]")
 {
-    ecs::ComponentRegistry::instance().register_component<SimpleComponent>();
-    ecs::ComponentRegistry::instance().register_component<ComplexComponent>();
+    ecs::register_component<SimpleComponent>();
+    ecs::register_component<ComplexComponent>();
 
     SECTION("Add simple components")
     {
-        auto array = ecs::ComponentArray::create<SimpleComponent>();
+        auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize to add first component
         array->resize(1);
@@ -98,7 +98,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
 
     SECTION("Add complex components")
     {
-        auto array = ecs::ComponentArray::create<ComplexComponent>();
+        auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize to add first component
         array->resize(1);
@@ -122,12 +122,12 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
 
 TEST_CASE("ComponentArray remove operations", "[component_array]")
 {
-    ecs::ComponentRegistry::instance().register_component<SimpleComponent>();
-    ecs::ComponentRegistry::instance().register_component<ComplexComponent>();
+    ecs::register_component<SimpleComponent>();
+    ecs::register_component<ComplexComponent>();
 
     SECTION("Remove simple components")
     {
-        auto array = ecs::ComponentArray::create<SimpleComponent>();
+        auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize and add three components
         array->resize(3);
@@ -152,7 +152,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
     SECTION("Remove complex components")
     {
-        auto array = ecs::ComponentArray::create<ComplexComponent>();
+        auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize and add three components
         std::vector<std::string> names = {"first", "second", "third"};
@@ -178,7 +178,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
     SECTION("Remove last element")
     {
-        auto array = ecs::ComponentArray::create<ComplexComponent>();
+        auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize and add two components
         array->resize(2);
@@ -195,7 +195,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
     SECTION("Remove single element")
     {
-        auto array = ecs::ComponentArray::create<ComplexComponent>();
+        auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         array->resize(1);
         new (array->get_ptr(0)) ComplexComponent("only");
@@ -209,13 +209,14 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
 TEST_CASE("ComponentArray memory management", "[component_array]")
 {
-    ecs::ComponentRegistry::instance().register_component<ComplexComponent>();
-    ecs::ComponentRegistry::instance().register_component<SimpleComponent>();
+    ecs::register_component<ComplexComponent>();
+    ecs::register_component<SimpleComponent>();
 
     SECTION("Proper destruction on array destruction")
     {
         {
-            auto array = ecs::ComponentArray::create<ComplexComponent>();
+            auto array =
+                ecs::detail::ComponentArray::create<ComplexComponent>();
 
             // Resize and add several components
             array->resize(5);
@@ -233,7 +234,7 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
 
     SECTION("Reserve capacity")
     {
-        auto array = ecs::ComponentArray::create<SimpleComponent>();
+        auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Reserve space first
         array->reserve(100);

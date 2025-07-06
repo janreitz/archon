@@ -26,8 +26,8 @@ int main() {
     // Create world and register components
     ecs::World world;
     // Components must be registered before use:
-    ecs::ComponentRegistry::instance().register_component<Position>();
-    ecs::ComponentRegistry::instance().register_component<Velocity>();
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
     
     // Create entities and add components
     for (int i = 0; i < 1000; ++i) {

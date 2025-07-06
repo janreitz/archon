@@ -9,12 +9,8 @@
 namespace ecs
 {
 
-template <typename... Components> ComponentMask get_component_mask()
+namespace detail
 {
-    ComponentMask mask;
-    (mask.set(ComponentRegistry::instance().get_meta_id<Components>()), ...);
-    return mask;
-}
 
 class ComponentArray
 {
@@ -48,12 +44,20 @@ class ComponentArray
     std::vector<uint8_t> data_;
 };
 
-template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
+class ComponentRegistry
 {
-    const auto meta_id = ComponentRegistry::instance().get_meta_id<T>();
-    const auto &meta = ComponentRegistry::instance().get_meta(meta_id);
-    return std::unique_ptr<ComponentArray>(new ComponentArray(meta_id, meta));
-}
+  public:
+    static ComponentRegistry &instance();
+    template <typename T> void register_component();
+    template <typename T> MetaComponentId get_meta_id() const;
+    MetaComponentId get_meta_id(std::type_index type_idx) const;
+    const MetaComponentArray &get_meta(MetaComponentId component_id) const;
+
+  private:
+    std::vector<MetaComponentArray> meta_data;
+    std::unordered_map<std::type_index, MetaComponentId> component_ids;
+    MetaComponentId next_id = 0;
+};
 
 template <typename T> void ComponentRegistry::register_component()
 {
@@ -97,6 +101,20 @@ template <typename T> void ComponentRegistry::register_component()
 template <typename T> MetaComponentId ComponentRegistry::get_meta_id() const
 {
     return get_meta_id(typeid(std::decay_t<T>));
+}
+
+template <typename... Components> ComponentMask get_component_mask()
+{
+    ComponentMask mask;
+    (mask.set(ComponentRegistry::instance().get_meta_id<Components>()), ...);
+    return mask;
+}
+
+template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
+{
+    const auto meta_id = ComponentRegistry::instance().get_meta_id<T>();
+    const auto &meta = ComponentRegistry::instance().get_meta(meta_id);
+    return std::unique_ptr<ComponentArray>(new ComponentArray(meta_id, meta));
 }
 
 class Archetype
@@ -167,11 +185,18 @@ std::tuple<Components &...> Archetype::get_components(EntityId entity)
     return std::tuple<Components &...>(get_component<Components>(index)...);
 }
 
+} // namespace detail
+
+template <typename T> void register_component()
+{
+    detail::ComponentRegistry::instance().register_component<T>();
+}
+
 // Query implementation
 template <typename... QueryComponents> Query<QueryComponents...>::Query()
 {
     (include_mask.set(
-         ComponentRegistry::instance().get_meta_id<QueryComponents>()),
+         detail::ComponentRegistry::instance().get_meta_id<QueryComponents>()),
      ...);
 }
 
@@ -180,7 +205,7 @@ template <typename... WithComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::with()
 {
     (include_mask.set(
-         ComponentRegistry::instance().get_meta_id<WithComponents>()),
+         detail::ComponentRegistry::instance().get_meta_id<WithComponents>()),
      ...);
     return *this;
 }
@@ -189,8 +214,8 @@ template <typename... QueryComponents>
 template <typename... ExcludeComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::without()
 {
-    (exclude_mask.set(
-         ComponentRegistry::instance().get_meta_id<ExcludeComponents>()),
+    (exclude_mask.set(detail::ComponentRegistry::instance()
+                          .get_meta_id<ExcludeComponents>()),
      ...);
     return *this;
 }
@@ -204,7 +229,7 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
     ZoneScoped;
 #endif
     using ArgumentBaseTypes =
-        typename function_traits<Func>::decayed_argument_types;
+        typename detail::function_traits<Func>::decayed_argument_types;
     using QueriedTypes = std::tuple<std::decay_t<QueryComponents>...>;
     using QueriedTypesWithId =
         std::tuple<std::decay_t<QueryComponents>..., EntityId>;
@@ -228,7 +253,7 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
             std::make_tuple(archetype->template data<QueryComponents>()...);
 
         for (size_t idx = 0; idx < element_count; idx++) {
-            if constexpr (has_extra_param<
+            if constexpr (detail::has_extra_param<
                               std::tuple<Func, QueryComponents...>>::value) {
                 func(std::get<QueryComponents *>(component_arrays)[idx]...,
                      archetype->idx_to_entity[idx]);
@@ -293,15 +318,15 @@ void World::add_components(EntityId entity, Components &&...component)
 #ifdef TRACY_ENABLE
     ZoneScoped;
 #endif
-    Archetype *current_archetype = entity_to_archetype_[entity];
+    detail::Archetype *current_archetype = entity_to_archetype_[entity];
 
     // Find or create appropriate archetype
-    const ComponentMask current_mask =
-        current_archetype ? current_archetype->mask_ : ComponentMask();
+    const detail::ComponentMask current_mask =
+        current_archetype ? current_archetype->mask_ : detail::ComponentMask();
 
     // Add the new component types to the mask
-    const auto add_mask = get_component_mask<Components...>();
-    const ComponentMask target_mask = current_mask | add_mask;
+    const auto add_mask = detail::get_component_mask<Components...>();
+    const detail::ComponentMask target_mask = current_mask | add_mask;
 
     assert(current_mask != target_mask && "Adding Components twice");
 
@@ -316,8 +341,9 @@ void World::add_components(EntityId entity, Components &&...component)
     (
         [&]() {
             using DecayedType = std::decay_t<Components>;
-            const MetaComponentId id =
-                ComponentRegistry::instance().get_meta_id<DecayedType>();
+            const detail::MetaComponentId id =
+                detail::ComponentRegistry::instance()
+                    .get_meta_id<DecayedType>();
             auto *ptr = target_archetype->components[id]->get_ptr(new_idx);
             new (ptr) DecayedType(std::forward<Components>(component));
         }(),
@@ -329,7 +355,8 @@ void World::add_components(EntityId entity, Components &&...component)
     if (current_archetype) {
         const size_t old_index = current_archetype->entities_to_idx[entity];
         for (const auto &[comp_id, old_array] : current_archetype->components) {
-            const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
+            const auto &meta =
+                detail::ComponentRegistry::instance().get_meta(comp_id);
 
             // Select appropriate transition mechanism based on type traits
             // Use placement new for construction, not assignment
@@ -367,7 +394,7 @@ template <typename... Components> void World::remove_components(EntityId entity)
         return; // Entity doesn't exist
     }
 
-    Archetype *current_archetype = entity_it->second;
+    detail::Archetype *current_archetype = entity_it->second;
     if (!current_archetype) {
         return; // Entity has no archetype
     }
@@ -377,8 +404,9 @@ template <typename... Components> void World::remove_components(EntityId entity)
            "Entity should exist in its assigned archetype");
 
     // Create target mask by removing the specified components
-    const auto remove_mask = get_component_mask<Components...>();
-    const ComponentMask target_mask = current_archetype->mask_ & (~remove_mask);
+    const auto remove_mask = detail::get_component_mask<Components...>();
+    const detail::ComponentMask target_mask =
+        current_archetype->mask_ & (~remove_mask);
 
     // If the mask is empty, remove the entity entirely
     if (target_mask.none()) {
@@ -406,7 +434,8 @@ template <typename... Components> void World::remove_components(EntityId entity)
         // Only copy components that exist in the target archetype (use
         // ComponentMask for faster lookup)
         if (target_mask.test(comp_id)) {
-            const auto &meta = ComponentRegistry::instance().get_meta(comp_id);
+            const auto &meta =
+                detail::ComponentRegistry::instance().get_meta(comp_id);
             meta.copy_component(
                 target_archetype->components[comp_id]->get_ptr(new_idx),
                 old_array->get_ptr(old_idx));
@@ -458,7 +487,7 @@ template <typename Component> bool World::has_component(EntityId entity) const
         return false;
     }
     return it->second->mask_.test(
-        ComponentRegistry::instance().get_meta_id<Component>());
+        detail::ComponentRegistry::instance().get_meta_id<Component>());
 }
 
 template <typename... Components>

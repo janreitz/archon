@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace ecs
+namespace ecs::detail
 {
 
 ComponentArray::ComponentArray(MetaComponentId meta_id,
@@ -144,16 +144,13 @@ ComponentRegistry::get_meta(MetaComponentId component_id) const
     return meta_data[component_id];
 }
 
-EntityId World::create_entity() { return next_entity_id_++; }
-
 Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
 {
     for (size_t id = 0; id < mask_.size(); id++) {
         if (mask_.test(id)) {
             const auto &meta = ComponentRegistry::instance().get_meta(
-                static_cast<ecs::MetaComponentId>(id));
-            components[static_cast<ecs::MetaComponentId>(id)] =
-                meta.create_array();
+                static_cast<MetaComponentId>(id));
+            components[static_cast<MetaComponentId>(id)] = meta.create_array();
         }
     }
 }
@@ -230,8 +227,15 @@ Archetype::without_component(const MetaComponentId &remove_comp_id) const
     new_mask.reset(remove_comp_id);
     return std::make_unique<Archetype>(new_mask);
 }
+} // namespace ecs::detail
 
-Archetype *World::get_or_create_archetype(const ComponentMask &mask)
+namespace ecs
+{
+
+EntityId World::create_entity() { return next_entity_id_++; }
+
+detail::Archetype *
+World::get_or_create_archetype(const detail::ComponentMask &mask)
 {
     if (auto kv_it = component_mask_to_archetypes_.find(mask);
         kv_it != component_mask_to_archetypes_.end()) {
@@ -239,7 +243,8 @@ Archetype *World::get_or_create_archetype(const ComponentMask &mask)
     }
 
     // Archetype needs to be created
-    std::unique_ptr<Archetype> new_arch = std::make_unique<Archetype>(mask);
+    std::unique_ptr<detail::Archetype> new_arch =
+        std::make_unique<detail::Archetype>(mask);
     auto [kv_it, _] =
         component_mask_to_archetypes_.emplace(mask, std::move(new_arch));
     return kv_it->second.get();

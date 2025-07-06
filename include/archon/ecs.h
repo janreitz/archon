@@ -14,7 +14,14 @@
 namespace ecs
 {
 using EntityId = uint32_t;
-constexpr size_t MAX_COMPONENTS = 32;
+constexpr size_t MAX_COMPONENTS = 32; // TODO find a way for the user to set
+                                      // this
+
+template <typename T> void register_component();
+
+namespace detail
+{
+
 using ComponentMask = std::bitset<MAX_COMPONENTS>;
 // This is the index into the ComponentMask
 // It's type is selected to be the smallest type
@@ -36,6 +43,7 @@ using MetaComponentId = decltype([]() {
 }());
 
 class ComponentArray;
+class Archetype;
 
 struct MetaComponentArray {
     using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
@@ -53,21 +61,6 @@ struct MetaComponentArray {
     bool is_trivially_copy_assignable_;
     bool is_nothrow_move_assignable_;
     bool is_trivially_destructible_;
-};
-
-class ComponentRegistry
-{
-  public:
-    static ComponentRegistry &instance();
-    template <typename T> void register_component();
-    template <typename T> MetaComponentId get_meta_id() const;
-    MetaComponentId get_meta_id(std::type_index type_idx) const;
-    const MetaComponentArray &get_meta(MetaComponentId component_id) const;
-
-  private:
-    std::vector<MetaComponentArray> meta_data;
-    std::unordered_map<std::type_index, MetaComponentId> component_ids;
-    MetaComponentId next_id = 0;
 };
 
 // Helper to get parameter types of a function
@@ -114,6 +107,8 @@ struct has_extra_param<std::tuple<Func, ValueComps...>>
                          (sizeof...(ValueComps) + 1)> {
 };
 
+} // namespace detail
+
 class World;
 
 template <typename T>
@@ -133,13 +128,11 @@ template <typename WorldT, typename Func>
 concept ArgsConstCompatible =
     []<typename... Arguments>(std::tuple<Arguments...> *) {
         return (ConstCompatible<WorldT, Arguments> && ...);
-    }(static_cast<typename function_traits<Func>::argument_types *>(nullptr));
+    }(static_cast<typename detail::function_traits<Func>::argument_types *>(
+        nullptr));
 
 template <typename... QueryComponents> class Query
 {
-    ComponentMask include_mask;
-    ComponentMask exclude_mask;
-
   public:
     Query();
 
@@ -157,9 +150,11 @@ template <typename... QueryComponents> class Query
     /// @brief Clear all entities that match the query
     void clear(World &world);
     [[nodiscard]] size_t size(const World &world) const;
-};
 
-class Archetype;
+  private:
+    detail::ComponentMask include_mask;
+    detail::ComponentMask exclude_mask;
+};
 
 class World
 {
@@ -185,14 +180,16 @@ class World
     bool has_components(EntityId entity) const;
 
   private:
-    Archetype *get_or_create_archetype(const ComponentMask &mask);
+    detail::Archetype *
+    get_or_create_archetype(const detail::ComponentMask &mask);
 
     // Make Query a friend so it can access archetypes
     template <typename... T> friend class Query;
 
-    std::unordered_map<ComponentMask, std::unique_ptr<Archetype>>
+    std::unordered_map<detail::ComponentMask,
+                       std::unique_ptr<detail::Archetype>>
         component_mask_to_archetypes_;
-    std::unordered_map<EntityId, Archetype *> entity_to_archetype_;
+    std::unordered_map<EntityId, detail::Archetype *> entity_to_archetype_;
     EntityId next_entity_id_ = 0;
 };
 

@@ -15,8 +15,8 @@ using ComponentB = benchmark::BenchmarkComponent<2, COMPONENT_DATA_SIZE>;
 
 void setup_world(ecs::World &world)
 {
-    ecs::ComponentRegistry::instance().register_component<ComponentA>();
-    ecs::ComponentRegistry::instance().register_component<ComponentB>();
+    ecs::register_component<ComponentA>();
+    ecs::register_component<ComponentB>();
 
     for (std::size_t i = 0; i < ENTITY_COUNT; ++i) {
         auto e = world.create_entity();
@@ -225,8 +225,8 @@ void test_query_construction_overhead()
     std::cout << "\n=== Query Construction Overhead ===" << std::endl;
 
     // Register components before testing query construction
-    ecs::ComponentRegistry::instance().register_component<ComponentA>();
-    ecs::ComponentRegistry::instance().register_component<ComponentB>();
+    ecs::register_component<ComponentA>();
+    ecs::register_component<ComponentB>();
 
     constexpr size_t MANY_ITERATIONS = 1000;
     auto start = std::chrono::high_resolution_clock::now();
