@@ -189,14 +189,6 @@ class World
     bool has_components(EntityId entity) const;
 
   private:
-    template <typename... Components> ComponentMask get_component_mask()
-    {
-        ComponentMask mask;
-        (mask.set(ComponentRegistry::instance().get_meta_id<Components>()),
-         ...);
-        return mask;
-    }
-
     Archetype *get_or_create_archetype(const ComponentMask &mask);
 
     // Make Query a friend so it can access archetypes

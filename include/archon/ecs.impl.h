@@ -9,6 +9,13 @@
 namespace ecs
 {
 
+template <typename... Components> ComponentMask get_component_mask()
+{
+    ComponentMask mask;
+    (mask.set(ComponentRegistry::instance().get_meta_id<Components>()), ...);
+    return mask;
+}
+
 class ComponentArray
 {
   public:
