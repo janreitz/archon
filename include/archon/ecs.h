@@ -96,56 +96,9 @@ class ComponentRegistry
 {
   public:
     static ComponentRegistry &instance();
-
-    template <typename T> void register_component()
-    {
-        const auto type_idx = std::type_index(typeid(std::decay_t<T>));
-        if (component_ids.contains(type_idx)) {
-            // Component already registered.
-            return;
-        }
-
-        const MetaComponentId meta_id = next_id++;
-        component_ids.insert({type_idx, meta_id});
-
-        MetaComponentArray meta_array{
-            .create_array = []() -> std::unique_ptr<ComponentArray> {
-                return ComponentArray::create<T>();
-            },
-            .copy_component =
-                [](void *dst, void *src) {
-                    *static_cast<T *>(dst) = *static_cast<T *>(src);
-                },
-            .move_component =
-                [](void *dst, void *src) {
-                    *static_cast<T *>(dst) = std::move(*static_cast<T *>(src));
-                },
-            .copy_construct =
-                [](void *dst, void *src) {
-                    new (dst) T(*static_cast<T *>(src));
-                },
-            .move_construct =
-                [](void *dst, void *src) {
-                    new (dst) T(std::move(*static_cast<T *>(src)));
-                },
-            .destroy_component = [](void *ptr) { static_cast<T *>(ptr)->~T(); },
-            .component_size = sizeof(T),
-            .type_name = typeid(T).name(),
-            .is_trivially_copy_assignable_ =
-                std::is_trivially_copy_assignable_v<T>,
-            .is_nothrow_move_assignable_ = std::is_nothrow_move_assignable_v<T>,
-            .is_trivially_destructible_ = std::is_trivially_destructible_v<T>};
-
-        meta_data.push_back(meta_array);
-    }
-
-    template <typename T> MetaComponentId get_meta_id() const
-    {
-        return get_meta_id(typeid(std::decay_t<T>));
-    }
-
+    template <typename T> void register_component();
+    template <typename T> MetaComponentId get_meta_id() const;
     MetaComponentId get_meta_id(std::type_index type_idx) const;
-
     const MetaComponentArray &get_meta(MetaComponentId component_id) const;
 
   private:
