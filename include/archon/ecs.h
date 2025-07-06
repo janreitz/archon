@@ -145,10 +145,6 @@ struct function_traits
 template <typename T> struct has_extra_param : std::false_type {
 };
 
-template <typename... ValueComps> struct component_pack {
-    static constexpr size_t size = sizeof...(ValueComps);
-};
-
 template <typename Func, typename... ValueComps>
 struct has_extra_param<std::tuple<Func, ValueComps...>>
     : std::bool_constant<function_traits<Func>::argument_count ==
