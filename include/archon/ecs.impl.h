@@ -9,6 +9,38 @@
 namespace ecs
 {
 
+class ComponentArray
+{
+  public:
+    template <typename T> static std::unique_ptr<ComponentArray> create();
+
+    [[nodiscard]] size_t size() const;
+    void reserve(size_t size);
+    void resize(size_t new_size);
+    void clear();
+    void remove(size_t idx);
+    void *get_ptr(size_t index);
+    template <typename T> T *data()
+    {
+        return reinterpret_cast<T *>(data_.data());
+    }
+    template <typename T> const T *data() const
+    {
+        return reinterpret_cast<const T *>(data_.data());
+    }
+    template <typename T> T &get(size_t index) { return data<T>()[index]; }
+    template <typename T> const T &get(size_t index) const
+    {
+        return data<const T>()[index];
+    }
+
+  private:
+    ComponentArray(MetaComponentId meta_id, const MetaComponentArray &meta);
+    MetaComponentId meta_id_;
+    MetaComponentArray meta_;
+    std::vector<uint8_t> data_;
+};
+
 template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 {
     const auto meta_id = ComponentRegistry::instance().get_meta_id<T>();
