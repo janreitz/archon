@@ -44,8 +44,7 @@ template <std::size_t Count, std::size_t size> void register_components()
     if constexpr (Count == 0) {
         return;
     } else {
-        ecs::ComponentRegistry::instance()
-            .register_component<BenchmarkComponent<Count, size>>();
+        ecs::register_component<BenchmarkComponent<Count, size>>();
         register_components<Count - 1, size>();
     }
 }
