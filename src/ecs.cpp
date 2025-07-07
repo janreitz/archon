@@ -14,8 +14,8 @@
 namespace ecs::detail
 {
 
-ComponentArray::ComponentArray(MetaComponentId meta_id,
-                               const MetaComponentArray &meta)
+ComponentArray::ComponentArray(ComponentTypeId meta_id,
+                               const ComponentTypeInfo &meta)
     : meta_id_(meta_id), meta_(meta)
 {
 }
@@ -131,14 +131,14 @@ ComponentRegistry &ComponentRegistry::instance()
     return registry;
 }
 
-MetaComponentId ComponentRegistry::get_meta_id(std::type_index type_idx) const
+ComponentTypeId ComponentRegistry::get_component_type_id(std::type_index type_idx) const
 {
     assert(component_ids.contains(type_idx) && "Component type not registered");
     return component_ids.at(type_idx);
 }
 
-const MetaComponentArray &
-ComponentRegistry::get_meta(MetaComponentId component_id) const
+const ComponentTypeInfo &
+ComponentRegistry::get_component_type_info(ComponentTypeId component_id) const
 {
     assert(component_id < meta_data.size());
     return meta_data[component_id];
@@ -148,9 +148,9 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
 {
     for (size_t id = 0; id < mask_.size(); id++) {
         if (mask_.test(id)) {
-            const auto &meta = ComponentRegistry::instance().get_meta(
-                static_cast<MetaComponentId>(id));
-            components[static_cast<MetaComponentId>(id)] = meta.create_array();
+            const auto &meta = ComponentRegistry::instance().get_component_type_info(
+                static_cast<ComponentTypeId>(id));
+            components[static_cast<ComponentTypeId>(id)] = meta.create_array();
         }
     }
 }
@@ -212,7 +212,7 @@ void Archetype::clear_entities()
 }
 
 std::unique_ptr<Archetype>
-Archetype::with_component(const MetaComponentId &new_comp_id) const
+Archetype::with_component(const ComponentTypeId &new_comp_id) const
 {
     // Collect existing component IDs
     auto new_mask = mask_;
@@ -221,7 +221,7 @@ Archetype::with_component(const MetaComponentId &new_comp_id) const
 }
 
 std::unique_ptr<Archetype>
-Archetype::without_component(const MetaComponentId &remove_comp_id) const
+Archetype::without_component(const ComponentTypeId &remove_comp_id) const
 {
     auto new_mask = mask_;
     new_mask.reset(remove_comp_id);

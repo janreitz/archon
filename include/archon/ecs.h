@@ -26,7 +26,7 @@ using ComponentMask = std::bitset<MAX_COMPONENTS>;
 // This is the index into the ComponentMask
 // It's type is selected to be the smallest type
 // that can represent MAX_COMPONENTS
-using MetaComponentId = decltype([]() {
+using ComponentTypeId = decltype([]() {
     constexpr auto bits_needed = std::bit_width(MAX_COMPONENTS);
 
     static_assert(bits_needed <= 64, "MAX_COMPONENT must fit within 64 bits");
@@ -45,7 +45,7 @@ using MetaComponentId = decltype([]() {
 class ComponentArray;
 class Archetype;
 
-struct MetaComponentArray {
+struct ComponentTypeInfo {
     using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
     using CopyComponentFn = void (*)(void *dst, void *src);
     using MoveComponentFn = void (*)(void *dst, void *src);

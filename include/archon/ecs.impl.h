@@ -38,9 +38,9 @@ class ComponentArray
     }
 
   private:
-    ComponentArray(MetaComponentId meta_id, const MetaComponentArray &meta);
-    MetaComponentId meta_id_;
-    MetaComponentArray meta_;
+    ComponentArray(ComponentTypeId meta_id, const ComponentTypeInfo &meta);
+    ComponentTypeId meta_id_;
+    ComponentTypeInfo meta_;
     std::vector<uint8_t> data_;
 };
 
@@ -49,14 +49,14 @@ class ComponentRegistry
   public:
     static ComponentRegistry &instance();
     template <typename T> void register_component();
-    template <typename T> MetaComponentId get_meta_id() const;
-    MetaComponentId get_meta_id(std::type_index type_idx) const;
-    const MetaComponentArray &get_meta(MetaComponentId component_id) const;
+    template <typename T> ComponentTypeId get_component_type_id() const;
+    ComponentTypeId get_component_type_id(std::type_index type_idx) const;
+    const ComponentTypeInfo &get_component_type_info(ComponentTypeId component_id) const;
 
   private:
-    std::vector<MetaComponentArray> meta_data;
-    std::unordered_map<std::type_index, MetaComponentId> component_ids;
-    MetaComponentId next_id = 0;
+    std::vector<ComponentTypeInfo> meta_data;
+    std::unordered_map<std::type_index, ComponentTypeId> component_ids;
+    ComponentTypeId next_id = 0;
 };
 
 template <typename T> void ComponentRegistry::register_component()
@@ -67,10 +67,10 @@ template <typename T> void ComponentRegistry::register_component()
         return;
     }
 
-    const MetaComponentId meta_id = next_id++;
+    const ComponentTypeId meta_id = next_id++;
     component_ids.insert({type_idx, meta_id});
 
-    MetaComponentArray meta_array{
+    ComponentTypeInfo meta_array{
         .create_array = []() -> std::unique_ptr<ComponentArray> {
             return ComponentArray::create<T>();
         },
@@ -98,22 +98,22 @@ template <typename T> void ComponentRegistry::register_component()
     meta_data.push_back(meta_array);
 }
 
-template <typename T> MetaComponentId ComponentRegistry::get_meta_id() const
+template <typename T> ComponentTypeId ComponentRegistry::get_component_type_id() const
 {
-    return get_meta_id(typeid(std::decay_t<T>));
+    return get_component_type_id(typeid(std::decay_t<T>));
 }
 
 template <typename... Components> ComponentMask get_component_mask()
 {
     ComponentMask mask;
-    (mask.set(ComponentRegistry::instance().get_meta_id<Components>()), ...);
+    (mask.set(ComponentRegistry::instance().get_component_type_id<Components>()), ...);
     return mask;
 }
 
 template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 {
-    const auto meta_id = ComponentRegistry::instance().get_meta_id<T>();
-    const auto &meta = ComponentRegistry::instance().get_meta(meta_id);
+    const auto meta_id = ComponentRegistry::instance().get_component_type_id<T>();
+    const auto &meta = ComponentRegistry::instance().get_component_type_info(meta_id);
     return std::unique_ptr<ComponentArray>(new ComponentArray(meta_id, meta));
 }
 
@@ -124,7 +124,7 @@ class Archetype
 
     std::unordered_map<EntityId, size_t> entities_to_idx;
     std::vector<EntityId> idx_to_entity;
-    std::unordered_map<MetaComponentId, std::unique_ptr<ComponentArray>>
+    std::unordered_map<ComponentTypeId, std::unique_ptr<ComponentArray>>
         components;
     const ComponentMask mask_;
 
@@ -142,16 +142,16 @@ class Archetype
 
     // Create archetype with additional component
     std::unique_ptr<Archetype>
-    with_component(const MetaComponentId &new_comp_id) const;
+    with_component(const ComponentTypeId &new_comp_id) const;
 
     // Create archetype without specific component
     std::unique_ptr<Archetype>
-    without_component(const MetaComponentId &remove_comp_id) const;
+    without_component(const ComponentTypeId &remove_comp_id) const;
 };
 
 template <typename T> T *Archetype::data()
 {
-    const MetaComponentId id = ComponentRegistry::instance().get_meta_id<T>();
+    const ComponentTypeId id = ComponentRegistry::instance().get_component_type_id<T>();
 
     assert(components.contains(id) &&
            "Archetype does not store component type");
@@ -163,7 +163,7 @@ template <typename T> T &Archetype::get_component(size_t index)
 {
     assert(index < idx_to_entity.size() && "Out of bounds access");
 
-    const MetaComponentId id = ComponentRegistry::instance().get_meta_id<T>();
+    const ComponentTypeId id = ComponentRegistry::instance().get_component_type_id<T>();
 
     assert(components.contains(id) &&
            "Archetype does not store component type");
@@ -196,7 +196,7 @@ template <typename T> void register_component()
 template <typename... QueryComponents> Query<QueryComponents...>::Query()
 {
     (include_mask.set(
-         detail::ComponentRegistry::instance().get_meta_id<QueryComponents>()),
+         detail::ComponentRegistry::instance().get_component_type_id<QueryComponents>()),
      ...);
 }
 
@@ -205,7 +205,7 @@ template <typename... WithComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::with()
 {
     (include_mask.set(
-         detail::ComponentRegistry::instance().get_meta_id<WithComponents>()),
+         detail::ComponentRegistry::instance().get_component_type_id<WithComponents>()),
      ...);
     return *this;
 }
@@ -215,7 +215,7 @@ template <typename... ExcludeComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::without()
 {
     (exclude_mask.set(detail::ComponentRegistry::instance()
-                          .get_meta_id<ExcludeComponents>()),
+                          .get_component_type_id<ExcludeComponents>()),
      ...);
     return *this;
 }
@@ -341,9 +341,9 @@ void World::add_components(EntityId entity, Components &&...component)
     (
         [&]() {
             using DecayedType = std::decay_t<Components>;
-            const detail::MetaComponentId id =
+            const detail::ComponentTypeId id =
                 detail::ComponentRegistry::instance()
-                    .get_meta_id<DecayedType>();
+                    .get_component_type_id<DecayedType>();
             auto *ptr = target_archetype->components[id]->get_ptr(new_idx);
             new (ptr) DecayedType(std::forward<Components>(component));
         }(),
@@ -356,7 +356,7 @@ void World::add_components(EntityId entity, Components &&...component)
         const size_t old_index = current_archetype->entities_to_idx[entity];
         for (const auto &[comp_id, old_array] : current_archetype->components) {
             const auto &meta =
-                detail::ComponentRegistry::instance().get_meta(comp_id);
+                detail::ComponentRegistry::instance().get_component_type_info(comp_id);
 
             // Select appropriate transition mechanism based on type traits
             // Use placement new for construction, not assignment
@@ -435,7 +435,7 @@ template <typename... Components> void World::remove_components(EntityId entity)
         // ComponentMask for faster lookup)
         if (target_mask.test(comp_id)) {
             const auto &meta =
-                detail::ComponentRegistry::instance().get_meta(comp_id);
+                detail::ComponentRegistry::instance().get_component_type_info(comp_id);
             meta.copy_component(
                 target_archetype->components[comp_id]->get_ptr(new_idx),
                 old_array->get_ptr(old_idx));
@@ -487,7 +487,7 @@ template <typename Component> bool World::has_component(EntityId entity) const
         return false;
     }
     return it->second->mask_.test(
-        detail::ComponentRegistry::instance().get_meta_id<Component>());
+        detail::ComponentRegistry::instance().get_component_type_id<Component>());
 }
 
 template <typename... Components>

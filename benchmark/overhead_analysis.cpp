@@ -233,7 +233,7 @@ void test_query_construction_overhead()
 
     for (std::size_t i = 0; i < MANY_ITERATIONS; ++i) {
         ecs::Query<ComponentA, ComponentB>
-            query;                   // This calls get_meta_id() twice
+            query;                   // This calls get_component_type_id() twice
         volatile auto *ptr = &query; // Prevent optimization
         (void)ptr;
     }
