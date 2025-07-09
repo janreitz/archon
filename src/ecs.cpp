@@ -20,67 +20,76 @@ ComponentArray::ComponentArray(ComponentTypeId meta_id,
 {
 }
 
-void ComponentArray::resize(size_t new_size)
+ComponentArray::~ComponentArray() { clear(); }
+
+void ComponentArray::push()
 {
-    const size_t current_size = size();
-    const size_t new_byte_size = new_size * meta_.component_size;
+    maybe_grow((element_count_ + 1) * meta_.component_size);
+    meta_.default_constructor(data_.data() +
+                              element_count_ * meta_.component_size);
+    element_count_++;
+}
 
-    if (new_size == current_size) {
-        return; // No change needed
-    }
-
-    if (new_size < current_size) {
-        // Shrinking - destroy extra objects first
-        if (!meta_.is_trivially_destructible_) {
-            for (size_t i = new_size; i < current_size; ++i) {
-                meta_.destructor(data_.data() + (i * meta_.component_size));
-            }
-        }
-        data_.resize(new_byte_size);
+void ComponentArray::push(void *src)
+{
+    maybe_grow((element_count_ + 1) * meta_.component_size);
+    if (meta_.is_trivially_copyable) {
+        std::memcpy(data_.data() + element_count_ * meta_.component_size, src,
+                    meta_.component_size);
+    } else if (meta_.is_nothrow_move_constructible) {
+        meta_.move_constructor(
+            data_.data() + element_count_ * meta_.component_size, src);
     } else {
-        // Growing - handle potential reallocation carefully
-        if (meta_.is_trivially_copy_assignable_) {
-            // For trivial types, simple resize works
-            data_.resize(new_byte_size);
-        } else {
-            // For non-trivial types, we need to handle reallocation properly
-            std::vector<uint8_t> new_data;
-            new_data.resize(new_byte_size);
+        meta_.copy_constructor(
+            data_.data() + element_count_ * meta_.component_size, src);
+    }
 
-            // Move existing objects to new location
-            for (size_t i = 0; i < current_size; ++i) {
-                meta_.move_constructor(
-                    new_data.data() + (i * meta_.component_size),
-                    data_.data() + (i * meta_.component_size));
-                meta_.destructor(data_.data() + (i * meta_.component_size));
-            }
+    element_count_++;
+}
 
-            // Replace old data with new data
-            data_ = std::move(new_data);
+void ComponentArray::maybe_grow(size_t required_size)
+{
+    if (required_size <= data_.size()) {
+        return;
+    }
+
+    decltype(data_) new_data(std::max(required_size, data_.size() * 2));
+
+    if (meta_.is_trivially_copyable) {
+        std::memcpy(new_data.data(), data_.data(),
+                    element_count_ * meta_.component_size);
+    } else if (meta_.is_nothrow_move_constructible) {
+        for (size_t i = 0; i < element_count_; i++) {
+            meta_.move_constructor(new_data.data() + i * meta_.component_size,
+                                   data_.data() + i * meta_.component_size);
+        }
+    } else {
+        for (size_t i = 0; i < element_count_; i++) {
+            meta_.copy_constructor(new_data.data() + i * meta_.component_size,
+                                   data_.data() + i * meta_.component_size);
         }
     }
+
+    clear();
+
+    data_ = std::move(new_data);
 }
 
 void ComponentArray::clear()
 {
-    if (!meta_.is_trivially_destructible_) {
+    if (!meta_.is_trivially_destructible) {
         const size_t current_size = size();
         for (size_t i = 0; i < current_size; ++i) {
             meta_.destructor(data_.data() + (i * meta_.component_size));
         }
     }
+    element_count_ = 0;
     data_.clear();
 }
 
-size_t ComponentArray::size() const
-{
-    return data_.size() / meta_.component_size;
-}
+size_t ComponentArray::size() const { return element_count_; }
 
-void ComponentArray::reserve(size_t size)
-{
-    data_.reserve(size * meta_.component_size);
-}
+void ComponentArray::reserve(size_t size) { maybe_grow(size); }
 
 void ComponentArray::remove(size_t idx)
 {
@@ -90,11 +99,11 @@ void ComponentArray::remove(size_t idx)
 
     if (idx != last_idx) {
         // Only need to move if we're not removing the last element
-        if (meta_.is_trivially_copy_assignable_) {
+        if (meta_.is_trivially_copyable) {
             std::memcpy(
-                // to idx
+                // dst
                 data_.data() + (idx * meta_.component_size),
-                // from last element
+                // src
                 data_.data() + (last_idx * meta_.component_size),
                 meta_.component_size);
         } else {
@@ -105,15 +114,13 @@ void ComponentArray::remove(size_t idx)
                                    data_.data() +
                                        (last_idx * meta_.component_size));
         }
-    } else {
-        // Removing the last element - just need to destroy it for non-trivial
-        // types
-        if (!meta_.is_trivially_destructible_) {
-            meta_.destructor(data_.data() + (idx * meta_.component_size));
-        }
     }
-
-    data_.resize(data_.size() - meta_.component_size);
+    // Removing the last element - just need to destroy it for non-trivial
+    // types
+    if (!meta_.is_trivially_destructible) {
+        meta_.destructor(data_.data() + (idx * meta_.component_size));
+    }
+    element_count_--;
 }
 
 void *ComponentArray::get_ptr(size_t index)
@@ -161,9 +168,8 @@ size_t Archetype::add_entity(EntityId entity)
     idx_to_entity.push_back(entity);
     entities_to_idx.insert({entity, newIndex});
 
-    // Resize all component arrays
     for (auto &[_, array] : components) {
-        array->resize(entities_to_idx.size());
+        array->push();
     }
     assert(idx_to_entity.size() == entities_to_idx.size() &&
            "Size mismatch after add");

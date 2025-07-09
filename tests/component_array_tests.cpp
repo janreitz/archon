@@ -5,7 +5,8 @@
 
 struct SimpleComponent {
     int value;
-    SimpleComponent(int v) : value(v) {}
+    SimpleComponent() = default;
+    explicit SimpleComponent(int v) : value(v) {}
 };
 
 struct ComplexComponent {
@@ -14,6 +15,7 @@ struct ComplexComponent {
     size_t move_count = 0;
     size_t destruct_count = 0;
 
+    ComplexComponent() = default;
     explicit ComplexComponent(std::string n) : name(std::move(n)) {}
 
     ComplexComponent(const ComplexComponent &other)
@@ -79,7 +81,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize to add first component
-        array->resize(1);
+        array->push();
         REQUIRE(array->size() == 1);
 
         // Set value using placement new
@@ -87,7 +89,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         REQUIRE(array->get<SimpleComponent>(0).value == 42);
 
         // Resize to add second component
-        array->resize(2);
+        array->push();
         REQUIRE(array->size() == 2);
         new (array->get_ptr(1)) SimpleComponent(100);
         REQUIRE(array->get<SimpleComponent>(1).value == 100);
@@ -101,7 +103,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize to add first component
-        array->resize(1);
+        array->push();
         REQUIRE(array->size() == 1);
 
         // Construct in place
@@ -109,7 +111,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         REQUIRE(array->get<ComplexComponent>(0).name == "first");
 
         // Resize to add second component
-        array->resize(2);
+        array->push();
         REQUIRE(array->size() == 2);
         new (array->get_ptr(1)) ComplexComponent("second");
         REQUIRE(array->get<ComplexComponent>(1).name == "second");
@@ -130,7 +132,9 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize and add three components
-        array->resize(3);
+        array->push();
+        array->push();
+        array->push();
         for (int i = 0; i < 3; ++i) {
             new (array->get_ptr(i)) SimpleComponent(i * 10);
         }
@@ -156,7 +160,9 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         // Resize and add three components
         std::vector<std::string> names = {"first", "second", "third"};
-        array->resize(3);
+        array->push();
+        array->push();
+        array->push();
         for (int i = 0; i < 3; ++i) {
             new (array->get_ptr(i)) ComplexComponent(names[i]);
         }
@@ -181,7 +187,8 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize and add two components
-        array->resize(2);
+        array->push();
+        array->push();
         new (array->get_ptr(0)) ComplexComponent("first");
         new (array->get_ptr(1)) ComplexComponent("second");
 
@@ -197,7 +204,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
     {
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
-        array->resize(1);
+        array->push();
         new (array->get_ptr(0)) ComplexComponent("only");
         REQUIRE(array->size() == 1);
 
@@ -219,7 +226,11 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
                 ecs::detail::ComponentArray::create<ComplexComponent>();
 
             // Resize and add several components
-            array->resize(5);
+            array->push();
+            array->push();
+            array->push();
+            array->push();
+            array->push();
             for (int i = 0; i < 5; ++i) {
                 new (array->get_ptr(i))
                     ComplexComponent("test_" + std::to_string(i));
@@ -240,16 +251,20 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
         array->reserve(100);
 
         // Resize to use some of the reserved space
-        array->resize(50);
-        REQUIRE(array->size() == 50);
+        array->push();
+        array->push();
+        array->push();
+        array->push();
+        array->push();
+        REQUIRE(array->size() == 5);
 
         // Add components to verify reserved space works
-        for (int i = 0; i < 50; ++i) {
+        for (int i = 0; i < 5; ++i) {
             new (array->get_ptr(i)) SimpleComponent(i);
         }
 
         // Verify components were stored correctly
         REQUIRE(array->get<SimpleComponent>(0).value == 0);
-        REQUIRE(array->get<SimpleComponent>(49).value == 49);
+        REQUIRE(array->get<SimpleComponent>(4).value == 4);
     }
 }

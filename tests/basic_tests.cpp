@@ -41,7 +41,7 @@ struct NonTrivialComponent {
         move_counter = other.move_counter;
         return *this;
     }
-    NonTrivialComponent(NonTrivialComponent &&other)
+    NonTrivialComponent(NonTrivialComponent &&other) noexcept
         : name(std::move(other.name)), copy_counter(other.copy_counter),
           move_counter(other.move_counter + 1)
     {

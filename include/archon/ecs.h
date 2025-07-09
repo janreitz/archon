@@ -60,9 +60,9 @@ struct ComponentTypeInfo {
 
     size_t component_size;
     std::string_view type_name;
-    bool is_trivially_copy_assignable_;
-    bool is_nothrow_move_assignable_;
-    bool is_trivially_destructible_;
+    bool is_trivially_copyable;
+    bool is_nothrow_move_constructible;
+    bool is_trivially_destructible;
 };
 
 // Helper to get parameter types of a function

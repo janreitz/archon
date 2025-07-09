@@ -17,9 +17,14 @@ class ComponentArray
   public:
     template <typename T> static std::unique_ptr<ComponentArray> create();
 
+    ~ComponentArray();
+
     [[nodiscard]] size_t size() const;
+    // Default constructs an element
+    void push();
+    // Copy constructs from source
+    void push(void *src);
     void reserve(size_t size);
-    void resize(size_t new_size);
     void clear();
     void remove(size_t idx);
     void *get_ptr(size_t index);
@@ -34,11 +39,16 @@ class ComponentArray
     template <typename T> T &get(size_t index) { return data<T>()[index]; }
     template <typename T> const T &get(size_t index) const
     {
-        return data<const T>()[index];
+        return data<T>()[index];
     }
 
   private:
     ComponentArray(ComponentTypeId meta_id, const ComponentTypeInfo &meta);
+
+    void maybe_grow(size_t required_size);
+    void destroy_elements();
+
+    size_t element_count_ = 0;
     ComponentTypeId meta_id_;
     ComponentTypeInfo meta_;
     std::vector<uint8_t> data_;
@@ -85,9 +95,10 @@ template <typename T> void ComponentRegistry::register_component()
             },
         .component_size = sizeof(T),
         .type_name = typeid(T).name(),
-        .is_trivially_copy_assignable_ = std::is_trivially_copy_assignable_v<T>,
-        .is_nothrow_move_assignable_ = std::is_nothrow_move_assignable_v<T>,
-        .is_trivially_destructible_ = std::is_trivially_destructible_v<T>};
+        .is_trivially_copyable = std::is_trivially_copyable_v<T>,
+        .is_nothrow_move_constructible =
+            std::is_nothrow_move_constructible_v<T>,
+        .is_trivially_destructible = std::is_trivially_destructible_v<T>};
 
     meta_data.push_back(meta_array);
 }
@@ -356,28 +367,8 @@ void World::add_components(EntityId entity, Components &&...component)
     if (current_archetype) {
         const size_t old_index = current_archetype->entities_to_idx[entity];
         for (const auto &[comp_id, old_array] : current_archetype->components) {
-            const auto &meta =
-                detail::ComponentRegistry::instance().get_component_type_info(
-                    comp_id);
-
-            // Select appropriate transition mechanism based on type traits
-            // Use placement new for construction, not assignment
-            if (meta.is_trivially_copy_assignable_) {
-                std::memcpy(
-                    target_archetype->components[comp_id]->get_ptr(new_idx),
-                    current_archetype->components[comp_id]->get_ptr(old_index),
-                    meta.component_size);
-            } else if (meta.is_nothrow_move_assignable_) {
-                meta.move_constructor(
-                    target_archetype->components[comp_id]->get_ptr(new_idx),
-                    old_array->get_ptr(old_index));
-                // Destroy the moved-from object
-                meta.destructor(old_array->get_ptr(old_index));
-            } else {
-                meta.copy_constructor(
-                    target_archetype->components[comp_id]->get_ptr(new_idx),
-                    old_array->get_ptr(old_index));
-            }
+            auto &target_array = target_archetype->components[comp_id];
+            target_array->push(old_array->get_ptr(old_index));
         }
         current_archetype->remove_entity(entity);
     }
