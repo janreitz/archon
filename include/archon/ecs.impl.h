@@ -21,8 +21,8 @@ class ComponentArray
 
     [[nodiscard]] size_t size() const;
     // Default constructs an element
-    void push();
-    // Copy constructs from source
+    void push_default();
+    // Copy or move constructs from source
     void push(void *src);
     void reserve(size_t size);
     void clear();
@@ -343,8 +343,6 @@ void World::add_components(EntityId entity, Components &&...component)
     assert(current_mask != target_mask && "Adding Components twice");
 
     auto *target_archetype = get_or_create_archetype(target_mask);
-
-    // Add entity to target archetype
     const size_t new_idx = target_archetype->add_entity(entity);
 
     // Move or copy new components into place

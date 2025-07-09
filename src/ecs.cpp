@@ -23,7 +23,7 @@ ComponentArray::ComponentArray(ComponentTypeId meta_id,
 
 ComponentArray::~ComponentArray() { clear(); }
 
-void ComponentArray::push()
+void ComponentArray::push_default()
 {
     maybe_grow((element_count_ + 1) * meta_.component_size);
     meta_.default_constructor(data_.data() +
@@ -173,7 +173,7 @@ size_t Archetype::add_entity(EntityId entity)
     entities_to_idx.insert({entity, newIndex});
 
     for (auto &[_, array] : components) {
-        array->push();
+        array->push_default();
     }
     assert(idx_to_entity.size() == entities_to_idx.size() &&
            "Size mismatch after add");
