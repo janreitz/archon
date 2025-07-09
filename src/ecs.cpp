@@ -54,6 +54,7 @@ void ComponentArray::maybe_grow(size_t required_size)
     }
 
     decltype(data_) new_data(std::max(required_size, data_.size() * 2));
+    const auto element_count = element_count_;
 
     if (meta_.is_trivially_copyable) {
         std::memcpy(new_data.data(), data_.data(),
@@ -70,9 +71,11 @@ void ComponentArray::maybe_grow(size_t required_size)
         }
     }
 
+    // Destroy all elements in the current data_ member
     clear();
-
+    // Swap in newly created larger array
     data_ = std::move(new_data);
+    element_count_ = element_count;
 }
 
 void ComponentArray::clear()
