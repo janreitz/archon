@@ -4,6 +4,7 @@
 #include <tracy/Tracy.hpp>
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <cstring> // For memcpy, size_t
 #include <memory>
