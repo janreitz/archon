@@ -100,8 +100,8 @@ void ComponentArray::remove(size_t idx)
 
     const size_t last_idx = size() - 1;
 
+    // Only need to move if we're not removing the last element
     if (idx != last_idx) {
-        // Only need to move if we're not removing the last element
         if (meta_.is_trivially_copyable) {
             std::memcpy(
                 // dst
@@ -121,7 +121,7 @@ void ComponentArray::remove(size_t idx)
     // Removing the last element - just need to destroy it for non-trivial
     // types
     if (!meta_.is_trivially_destructible) {
-        meta_.destructor(data_.data() + (idx * meta_.component_size));
+        meta_.destructor(data_.data() + (last_idx * meta_.component_size));
     }
     element_count_--;
 }
