@@ -33,8 +33,7 @@ void ComponentArray::resize(size_t new_size)
         // Shrinking - destroy extra objects first
         if (!meta_.is_trivially_destructible_) {
             for (size_t i = new_size; i < current_size; ++i) {
-                meta_.destroy_component(data_.data() +
-                                        (i * meta_.component_size));
+                meta_.destructor(data_.data() + (i * meta_.component_size));
             }
         }
         data_.resize(new_byte_size);
@@ -50,11 +49,10 @@ void ComponentArray::resize(size_t new_size)
 
             // Move existing objects to new location
             for (size_t i = 0; i < current_size; ++i) {
-                meta_.move_construct(new_data.data() +
-                                         (i * meta_.component_size),
-                                     data_.data() + (i * meta_.component_size));
-                meta_.destroy_component(data_.data() +
-                                        (i * meta_.component_size));
+                meta_.move_constructor(
+                    new_data.data() + (i * meta_.component_size),
+                    data_.data() + (i * meta_.component_size));
+                meta_.destructor(data_.data() + (i * meta_.component_size));
             }
 
             // Replace old data with new data
@@ -68,7 +66,7 @@ void ComponentArray::clear()
     if (!meta_.is_trivially_destructible_) {
         const size_t current_size = size();
         for (size_t i = 0; i < current_size; ++i) {
-            meta_.destroy_component(data_.data() + (i * meta_.component_size));
+            meta_.destructor(data_.data() + (i * meta_.component_size));
         }
     }
     data_.clear();
@@ -101,19 +99,17 @@ void ComponentArray::remove(size_t idx)
                 meta_.component_size);
         } else {
             // Destroy the element we're removing
-            meta_.destroy_component(data_.data() +
-                                    (idx * meta_.component_size));
+            meta_.destructor(data_.data() + (idx * meta_.component_size));
             // Move the last element to fill the gap
-            meta_.move_construct(data_.data() + (idx * meta_.component_size),
-                                 data_.data() +
-                                     (last_idx * meta_.component_size));
+            meta_.move_constructor(data_.data() + (idx * meta_.component_size),
+                                   data_.data() +
+                                       (last_idx * meta_.component_size));
         }
     } else {
         // Removing the last element - just need to destroy it for non-trivial
         // types
         if (!meta_.is_trivially_destructible_) {
-            meta_.destroy_component(data_.data() +
-                                    (idx * meta_.component_size));
+            meta_.destructor(data_.data() + (idx * meta_.component_size));
         }
     }
 
@@ -131,7 +127,8 @@ ComponentRegistry &ComponentRegistry::instance()
     return registry;
 }
 
-ComponentTypeId ComponentRegistry::get_component_type_id(std::type_index type_idx) const
+ComponentTypeId
+ComponentRegistry::get_component_type_id(std::type_index type_idx) const
 {
     assert(component_ids.contains(type_idx) && "Component type not registered");
     return component_ids.at(type_idx);
@@ -148,8 +145,9 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
 {
     for (size_t id = 0; id < mask_.size(); id++) {
         if (mask_.test(id)) {
-            const auto &meta = ComponentRegistry::instance().get_component_type_info(
-                static_cast<ComponentTypeId>(id));
+            const auto &meta =
+                ComponentRegistry::instance().get_component_type_info(
+                    static_cast<ComponentTypeId>(id));
             components[static_cast<ComponentTypeId>(id)] = meta.create_array();
         }
     }

@@ -47,15 +47,17 @@ class Archetype;
 
 struct ComponentTypeInfo {
     using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
-    using CopyComponentFn = void (*)(void *dst, void *src);
-    using MoveComponentFn = void (*)(void *dst, void *src);
+    using DefaultConstructorFn = void (*)(void *dst);
+    using DestructorFn = void (*)(void *);
+    using CopyConstructorFn = void (*)(void *dst, void *src);
+    using MoveConstructorFn = void (*)(void *dst, void *src);
 
     CreateArrayFn create_array;
-    CopyComponentFn copy_component;
-    MoveComponentFn move_component;
-    CopyComponentFn copy_construct;
-    MoveComponentFn move_construct;
-    void (*destroy_component)(void *ptr);
+    DefaultConstructorFn default_constructor;
+    DestructorFn destructor;
+    CopyConstructorFn copy_constructor;
+    MoveConstructorFn move_constructor;
+
     size_t component_size;
     std::string_view type_name;
     bool is_trivially_copy_assignable_;

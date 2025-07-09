@@ -51,7 +51,8 @@ class ComponentRegistry
     template <typename T> void register_component();
     template <typename T> ComponentTypeId get_component_type_id() const;
     ComponentTypeId get_component_type_id(std::type_index type_idx) const;
-    const ComponentTypeInfo &get_component_type_info(ComponentTypeId component_id) const;
+    const ComponentTypeInfo &
+    get_component_type_info(ComponentTypeId component_id) const;
 
   private:
     std::vector<ComponentTypeInfo> meta_data;
@@ -74,21 +75,14 @@ template <typename T> void ComponentRegistry::register_component()
         .create_array = []() -> std::unique_ptr<ComponentArray> {
             return ComponentArray::create<T>();
         },
-        .copy_component =
-            [](void *dst, void *src) {
-                *static_cast<T *>(dst) = *static_cast<T *>(src);
-            },
-        .move_component =
-            [](void *dst, void *src) {
-                *static_cast<T *>(dst) = std::move(*static_cast<T *>(src));
-            },
-        .copy_construct =
+        .default_constructor = [](void *dst) { new (dst) T(); },
+        .destructor = [](void *obj) { static_cast<T *>(obj)->~T(); },
+        .copy_constructor =
             [](void *dst, void *src) { new (dst) T(*static_cast<T *>(src)); },
-        .move_construct =
+        .move_constructor =
             [](void *dst, void *src) {
                 new (dst) T(std::move(*static_cast<T *>(src)));
             },
-        .destroy_component = [](void *ptr) { static_cast<T *>(ptr)->~T(); },
         .component_size = sizeof(T),
         .type_name = typeid(T).name(),
         .is_trivially_copy_assignable_ = std::is_trivially_copy_assignable_v<T>,
@@ -98,7 +92,8 @@ template <typename T> void ComponentRegistry::register_component()
     meta_data.push_back(meta_array);
 }
 
-template <typename T> ComponentTypeId ComponentRegistry::get_component_type_id() const
+template <typename T>
+ComponentTypeId ComponentRegistry::get_component_type_id() const
 {
     return get_component_type_id(typeid(std::decay_t<T>));
 }
@@ -106,14 +101,18 @@ template <typename T> ComponentTypeId ComponentRegistry::get_component_type_id()
 template <typename... Components> ComponentMask get_component_mask()
 {
     ComponentMask mask;
-    (mask.set(ComponentRegistry::instance().get_component_type_id<Components>()), ...);
+    (mask.set(
+         ComponentRegistry::instance().get_component_type_id<Components>()),
+     ...);
     return mask;
 }
 
 template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
 {
-    const auto meta_id = ComponentRegistry::instance().get_component_type_id<T>();
-    const auto &meta = ComponentRegistry::instance().get_component_type_info(meta_id);
+    const auto meta_id =
+        ComponentRegistry::instance().get_component_type_id<T>();
+    const auto &meta =
+        ComponentRegistry::instance().get_component_type_info(meta_id);
     return std::unique_ptr<ComponentArray>(new ComponentArray(meta_id, meta));
 }
 
@@ -151,7 +150,8 @@ class Archetype
 
 template <typename T> T *Archetype::data()
 {
-    const ComponentTypeId id = ComponentRegistry::instance().get_component_type_id<T>();
+    const ComponentTypeId id =
+        ComponentRegistry::instance().get_component_type_id<T>();
 
     assert(components.contains(id) &&
            "Archetype does not store component type");
@@ -163,7 +163,8 @@ template <typename T> T &Archetype::get_component(size_t index)
 {
     assert(index < idx_to_entity.size() && "Out of bounds access");
 
-    const ComponentTypeId id = ComponentRegistry::instance().get_component_type_id<T>();
+    const ComponentTypeId id =
+        ComponentRegistry::instance().get_component_type_id<T>();
 
     assert(components.contains(id) &&
            "Archetype does not store component type");
@@ -195,8 +196,8 @@ template <typename T> void register_component()
 // Query implementation
 template <typename... QueryComponents> Query<QueryComponents...>::Query()
 {
-    (include_mask.set(
-         detail::ComponentRegistry::instance().get_component_type_id<QueryComponents>()),
+    (include_mask.set(detail::ComponentRegistry::instance()
+                          .get_component_type_id<QueryComponents>()),
      ...);
 }
 
@@ -204,8 +205,8 @@ template <typename... QueryComponents>
 template <typename... WithComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::with()
 {
-    (include_mask.set(
-         detail::ComponentRegistry::instance().get_component_type_id<WithComponents>()),
+    (include_mask.set(detail::ComponentRegistry::instance()
+                          .get_component_type_id<WithComponents>()),
      ...);
     return *this;
 }
@@ -356,7 +357,8 @@ void World::add_components(EntityId entity, Components &&...component)
         const size_t old_index = current_archetype->entities_to_idx[entity];
         for (const auto &[comp_id, old_array] : current_archetype->components) {
             const auto &meta =
-                detail::ComponentRegistry::instance().get_component_type_info(comp_id);
+                detail::ComponentRegistry::instance().get_component_type_info(
+                    comp_id);
 
             // Select appropriate transition mechanism based on type traits
             // Use placement new for construction, not assignment
@@ -366,13 +368,13 @@ void World::add_components(EntityId entity, Components &&...component)
                     current_archetype->components[comp_id]->get_ptr(old_index),
                     meta.component_size);
             } else if (meta.is_nothrow_move_assignable_) {
-                meta.move_construct(
+                meta.move_constructor(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     old_array->get_ptr(old_index));
                 // Destroy the moved-from object
-                meta.destroy_component(old_array->get_ptr(old_index));
+                meta.destructor(old_array->get_ptr(old_index));
             } else {
-                meta.copy_construct(
+                meta.copy_constructor(
                     target_archetype->components[comp_id]->get_ptr(new_idx),
                     old_array->get_ptr(old_index));
             }
@@ -435,8 +437,9 @@ template <typename... Components> void World::remove_components(EntityId entity)
         // ComponentMask for faster lookup)
         if (target_mask.test(comp_id)) {
             const auto &meta =
-                detail::ComponentRegistry::instance().get_component_type_info(comp_id);
-            meta.copy_component(
+                detail::ComponentRegistry::instance().get_component_type_info(
+                    comp_id);
+            meta.copy_constructor(
                 target_archetype->components[comp_id]->get_ptr(new_idx),
                 old_array->get_ptr(old_idx));
         }
@@ -486,8 +489,8 @@ template <typename Component> bool World::has_component(EntityId entity) const
     if (it == entity_to_archetype_.end()) {
         return false;
     }
-    return it->second->mask_.test(
-        detail::ComponentRegistry::instance().get_component_type_id<Component>());
+    return it->second->mask_.test(detail::ComponentRegistry::instance()
+                                      .get_component_type_id<Component>());
 }
 
 template <typename... Components>

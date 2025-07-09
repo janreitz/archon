@@ -28,6 +28,7 @@ struct NonTrivialComponent {
     size_t copy_counter = 0;
     size_t move_counter = 0;
 
+    NonTrivialComponent() = default;
     explicit NonTrivialComponent(std::string n) : name(std::move(n)) {}
     NonTrivialComponent(const NonTrivialComponent &other)
         : name(other.name), copy_counter(other.copy_counter + 1)
