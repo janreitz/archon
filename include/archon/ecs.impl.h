@@ -20,10 +20,13 @@ class ComponentArray
     ~ComponentArray();
 
     [[nodiscard]] size_t size() const;
-    // Default constructs an element
-    void push_default();
-    // Copy or move constructs from source
-    void push(void *src);
+
+    // Choose copy or move based on type traits
+    void push_from(void *src);
+    // Copy construct from source
+    void push_copy(void *src);
+    // Move construct from source
+    void push_move(void *src);
     void reserve(size_t size);
     void clear();
     void remove(size_t idx);
@@ -343,7 +346,7 @@ void World::add_components(EntityId entity, Components &&...component)
     assert(current_mask != target_mask && "Adding Components twice");
 
     auto *target_archetype = get_or_create_archetype(target_mask);
-    const size_t new_idx = target_archetype->add_entity(entity);
+    target_archetype->add_entity(entity);
 
     // Move or copy new components into place
     // Compile-time resolution via fold expression is possible,
@@ -354,19 +357,23 @@ void World::add_components(EntityId entity, Components &&...component)
             const detail::ComponentTypeId id =
                 detail::ComponentRegistry::instance()
                     .get_component_type_id<DecayedType>();
-            auto *ptr = target_archetype->components[id]->get_ptr(new_idx);
-            new (ptr) DecayedType(std::forward<Components>(component));
+            auto &component_array = target_archetype->components[id];
+            if constexpr (std::is_rvalue_reference_v<Components &&>) {
+                component_array->push_move(&component);
+            } else {
+                component_array->push_copy(&component);
+            }
         }(),
         ...);
 
-    // Copy existing components from old to new archetype
+    // Copy or move existing components from old to new archetype
     // Runtime MetaId Lookup is required, because the old component types
     // are not directly available
     if (current_archetype) {
         const size_t old_index = current_archetype->entities_to_idx[entity];
         for (const auto &[comp_id, old_array] : current_archetype->components) {
             auto &target_array = target_archetype->components[comp_id];
-            target_array->push(old_array->get_ptr(old_index));
+            target_array->push_from(old_array->get_ptr(old_index));
         }
         current_archetype->remove_entity(entity);
     }
@@ -418,18 +425,13 @@ template <typename... Components> void World::remove_components(EntityId entity)
     const size_t old_idx = current_archetype->entities_to_idx[entity];
 
     // Add entity to target archetype
-    const size_t new_idx = target_archetype->add_entity(entity);
+    target_archetype->add_entity(entity);
 
     // Copy remaining components from current to target archetype
     for (const auto &[comp_id, old_array] : current_archetype->components) {
-        // Only copy components that exist in the target archetype (use
-        // ComponentMask for faster lookup)
+        // Only copy components that exist in the target archetype
         if (target_mask.test(comp_id)) {
-            const auto &meta =
-                detail::ComponentRegistry::instance().get_component_type_info(
-                    comp_id);
-            meta.copy_constructor(
-                target_archetype->components[comp_id]->get_ptr(new_idx),
+            target_archetype->components[comp_id]->push_from(
                 old_array->get_ptr(old_idx));
         }
     }

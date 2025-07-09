@@ -34,24 +34,10 @@ struct NonTrivialComponent {
         : name(other.name), copy_counter(other.copy_counter + 1)
     {
     }
-    NonTrivialComponent &operator=(const NonTrivialComponent &other)
-    {
-        name = other.name;
-        copy_counter = other.copy_counter + 1;
-        move_counter = other.move_counter;
-        return *this;
-    }
     NonTrivialComponent(NonTrivialComponent &&other) noexcept
         : name(std::move(other.name)), copy_counter(other.copy_counter),
           move_counter(other.move_counter + 1)
     {
-    }
-    NonTrivialComponent &operator=(NonTrivialComponent &&other) noexcept
-    {
-        name = std::move(other.name);
-        copy_counter = other.copy_counter;
-        move_counter = other.move_counter + 1;
-        return *this;
     }
 };
 
@@ -311,7 +297,7 @@ TEST_CASE("Archetype transitions with different component types",
 
         REQUIRE(trivial.value == 2);
         REQUIRE(non_trivial.name == "step1");
-        REQUIRE(non_trivial.copy_counter >= 1); // At least one copy occurred
+        REQUIRE(non_trivial.copy_counter == 0);
     }
 }
 

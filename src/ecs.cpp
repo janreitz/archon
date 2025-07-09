@@ -23,15 +23,7 @@ ComponentArray::ComponentArray(ComponentTypeId meta_id,
 
 ComponentArray::~ComponentArray() { clear(); }
 
-void ComponentArray::push_default()
-{
-    maybe_grow((element_count_ + 1) * meta_.component_size);
-    meta_.default_constructor(data_.data() +
-                              element_count_ * meta_.component_size);
-    element_count_++;
-}
-
-void ComponentArray::push(void *src)
+void ComponentArray::push_from(void *src)
 {
     maybe_grow((element_count_ + 1) * meta_.component_size);
     if (meta_.is_trivially_copyable) {
@@ -42,6 +34,37 @@ void ComponentArray::push(void *src)
             data_.data() + element_count_ * meta_.component_size, src);
     } else {
         meta_.copy_constructor(
+            data_.data() + element_count_ * meta_.component_size, src);
+    }
+    element_count_++;
+}
+
+void ComponentArray::push_copy(void *src)
+{
+    maybe_grow((element_count_ + 1) * meta_.component_size);
+    if (meta_.is_trivially_copyable) {
+        std::memcpy(data_.data() + element_count_ * meta_.component_size, src,
+                    meta_.component_size);
+    } else {
+        meta_.copy_constructor(
+            data_.data() + element_count_ * meta_.component_size, src);
+    }
+
+    element_count_++;
+}
+
+void ComponentArray::push_move(void *src)
+{
+    assert(meta_.is_nothrow_move_constructible &&
+           "Component must be nothrow move constructible");
+
+    maybe_grow((element_count_ + 1) * meta_.component_size);
+
+    if (meta_.is_trivially_copyable) {
+        std::memcpy(data_.data() + element_count_ * meta_.component_size, src,
+                    meta_.component_size);
+    } else {
+        meta_.move_constructor(
             data_.data() + element_count_ * meta_.component_size, src);
     }
 
@@ -172,9 +195,6 @@ size_t Archetype::add_entity(EntityId entity)
     idx_to_entity.push_back(entity);
     entities_to_idx.insert({entity, newIndex});
 
-    for (auto &[_, array] : components) {
-        array->push_default();
-    }
     assert(idx_to_entity.size() == entities_to_idx.size() &&
            "Size mismatch after add");
     return newIndex;

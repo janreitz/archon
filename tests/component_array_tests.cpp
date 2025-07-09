@@ -76,12 +76,14 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
     ecs::register_component<SimpleComponent>();
     ecs::register_component<ComplexComponent>();
 
+    SimpleComponent comp;
+
     SECTION("Add simple components")
     {
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize to add first component
-        array->push_default();
+        array->push_copy(&comp);
         REQUIRE(array->size() == 1);
 
         // Set value using placement new
@@ -89,7 +91,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         REQUIRE(array->get<SimpleComponent>(0).value == 42);
 
         // Resize to add second component
-        array->push_default();
+        array->push_copy(&comp);
         REQUIRE(array->size() == 2);
         new (array->get_ptr(1)) SimpleComponent(100);
         REQUIRE(array->get<SimpleComponent>(1).value == 100);
@@ -103,17 +105,17 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize to add first component
-        array->push_default();
+        ComplexComponent complex_comp("first");
+        array->push_copy(&complex_comp);
         REQUIRE(array->size() == 1);
 
         // Construct in place
-        new (array->get_ptr(0)) ComplexComponent("first");
         REQUIRE(array->get<ComplexComponent>(0).name == "first");
 
         // Resize to add second component
-        array->push_default();
+        ComplexComponent complex_comp2("second");
+        array->push_copy(&complex_comp2);
         REQUIRE(array->size() == 2);
-        new (array->get_ptr(1)) ComplexComponent("second");
         REQUIRE(array->get<ComplexComponent>(1).name == "second");
 
         // Verify both components
@@ -131,12 +133,9 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
     {
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
-        // Resize and add three components
-        array->push_default();
-        array->push_default();
-        array->push_default();
         for (int i = 0; i < 3; ++i) {
-            new (array->get_ptr(i)) SimpleComponent(i * 10);
+            SimpleComponent comp(i * 10);
+            array->push_copy(&comp);
         }
         REQUIRE(array->size() == 3);
 
@@ -160,11 +159,10 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         // Resize and add three components
         std::vector<std::string> names = {"first", "second", "third"};
-        array->push_default();
-        array->push_default();
-        array->push_default();
+
         for (int i = 0; i < 3; ++i) {
-            new (array->get_ptr(i)) ComplexComponent(names[i]);
+            ComplexComponent comp(names[i]);
+            array->push_copy(&comp);
         }
         REQUIRE(array->size() == 3);
 
@@ -187,10 +185,10 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         // Resize and add two components
-        array->push_default();
-        array->push_default();
-        new (array->get_ptr(0)) ComplexComponent("first");
-        new (array->get_ptr(1)) ComplexComponent("second");
+        ComplexComponent comp1("first");
+        array->push_move(&comp1);
+        ComplexComponent comp2("second");
+        array->push_move(&comp2);
 
         REQUIRE(array->size() == 2);
 
@@ -204,8 +202,8 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
     {
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
-        array->push_default();
-        new (array->get_ptr(0)) ComplexComponent("only");
+        ComplexComponent comp("only");
+        array->push_from(&comp);
         REQUIRE(array->size() == 1);
 
         // Remove the only element
@@ -225,16 +223,13 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
             auto array =
                 ecs::detail::ComponentArray::create<ComplexComponent>();
 
+            ComplexComponent comp{"test"};
             // Resize and add several components
-            array->push_default();
-            array->push_default();
-            array->push_default();
-            array->push_default();
-            array->push_default();
-            for (int i = 0; i < 5; ++i) {
-                new (array->get_ptr(i))
-                    ComplexComponent("test_" + std::to_string(i));
-            }
+            array->push_copy(&comp);
+            array->push_copy(&comp);
+            array->push_copy(&comp);
+            array->push_copy(&comp);
+            array->push_copy(&comp);
 
             REQUIRE(array->size() == 5);
             // Array destructor should properly destroy all components
@@ -250,18 +245,14 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
         // Reserve space first
         array->reserve(100);
 
-        // Resize to use some of the reserved space
-        array->push_default();
-        array->push_default();
-        array->push_default();
-        array->push_default();
-        array->push_default();
+        SimpleComponent comp{0};
+        SimpleComponent comp4{4};
+        array->push_copy(&comp);
+        array->push_copy(&comp);
+        array->push_copy(&comp);
+        array->push_copy(&comp);
+        array->push_copy(&comp4);
         REQUIRE(array->size() == 5);
-
-        // Add components to verify reserved space works
-        for (int i = 0; i < 5; ++i) {
-            new (array->get_ptr(i)) SimpleComponent(i);
-        }
 
         // Verify components were stored correctly
         REQUIRE(array->get<SimpleComponent>(0).value == 0);
