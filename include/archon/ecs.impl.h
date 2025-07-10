@@ -241,6 +241,20 @@ bool Query<QueryComponents...>::matches(detail::ComponentMask mask) const
 
 template <typename... QueryComponents>
 template <WorldType WorldT, typename Func>
+void Query<QueryComponents...>::for_each_matching_archetype(WorldT &&world,
+                                                            Func &&func) const
+{
+    for (auto &[component_mask, archetype] :
+         world.component_mask_to_archetypes_) {
+        if (!matches(component_mask))
+            continue;
+
+        func(archetype);
+    }
+}
+
+template <typename... QueryComponents>
+template <WorldType WorldT, typename Func>
 requires ArgsConstCompatible<WorldT, Func>
 void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
 {
@@ -257,53 +271,42 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
                       std::is_same_v<ArgumentBaseTypes, QueriedTypes>,
                   "Function arguments must match query value components");
 
-    for (auto &[component_mask, archetype] :
-         world.component_mask_to_archetypes_) {
-        if (!matches(component_mask))
-            continue;
+    for_each_matching_archetype(
+        std::forward<WorldT>(world), [&func](auto &archetype) {
+            size_t element_count = archetype->idx_to_entity.size();
+            if (element_count == 0)
+                return; // Early exit for empty archetypes
 
-        size_t element_count = archetype->idx_to_entity.size();
-        if (element_count == 0)
-            continue; // Early exit for empty archetypes
+            auto component_arrays =
+                std::make_tuple(archetype->template data<QueryComponents>()...);
 
-        auto component_arrays =
-            std::make_tuple(archetype->template data<QueryComponents>()...);
-
-        for (size_t idx = 0; idx < element_count; idx++) {
-            if constexpr (detail::has_extra_param<
-                              std::tuple<Func, QueryComponents...>>::value) {
-                func(std::get<QueryComponents *>(component_arrays)[idx]...,
-                     archetype->idx_to_entity[idx]);
-            } else {
-                func(std::get<QueryComponents *>(component_arrays)[idx]...);
+            for (size_t idx = 0; idx < element_count; idx++) {
+                if constexpr (detail::has_extra_param<std::tuple<
+                                  Func, QueryComponents...>>::value) {
+                    func(std::get<QueryComponents *>(component_arrays)[idx]...,
+                         archetype->idx_to_entity[idx]);
+                } else {
+                    func(std::get<QueryComponents *>(component_arrays)[idx]...);
+                }
             }
-        }
-    }
+        });
 }
 
 template <typename... QueryComponents>
 template <typename Func>
 void Query<QueryComponents...>::each_archetype(Func &&func, World &world) const
 {
-    for (const auto &[component_mask, archetype] :
-         world.component_mask_to_archetypes_) {
-        if (!matches(component_mask))
-            continue;
-
+    for_each_matching_archetype(world, [&func](auto &archetype) {
         func(archetype->entities_to_idx.size(),
              archetype->template get_component<QueryComponents>(0)...);
-    }
+    });
 }
 
 template <typename... QueryComponents>
 void Query<QueryComponents...>::clear(World &world)
 {
-    for (const auto &[component_mask, archetype] :
-         world.component_mask_to_archetypes_) {
-        if (!matches(component_mask))
-            continue;
-        archetype->clear_entities();
-    }
+    for_each_matching_archetype(
+        world, [](auto &archetype) { archetype->clear_entities(); });
 }
 
 template <typename... QueryComponents>
@@ -313,12 +316,9 @@ size_t Query<QueryComponents...>::size(const World &world) const
     ZoneScoped;
 #endif
     size_t total = 0;
-    for (const auto &[component_mask, archetype] :
-         world.component_mask_to_archetypes_) {
-        if (!matches(component_mask))
-            continue;
+    for_each_matching_archetype(world, [&total](auto &archetype) {
         total += archetype->entities_to_idx.size();
-    }
+    });
     return total;
 }
 

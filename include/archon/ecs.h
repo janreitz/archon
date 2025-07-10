@@ -156,6 +156,9 @@ template <typename... QueryComponents> class Query
   private:
     bool matches(detail::ComponentMask mask) const;
 
+    template <WorldType WorldT, typename Func>
+    void for_each_matching_archetype(WorldT &&world, Func &&func) const;
+
     detail::ComponentMask include_mask;
     detail::ComponentMask exclude_mask;
 };
