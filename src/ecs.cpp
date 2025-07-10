@@ -228,21 +228,39 @@ Archetype::without_component(const ComponentTypeId &remove_comp_id) const
 namespace ecs
 {
 
-EntityId World::create_entity() { return next_entity_id_++; }
+World::World()
+{
+    // Initialize with empty archetype
+    get_or_create_archetype(detail::ComponentMask());
+    assert(entity_to_archetype_.empty() && "");
+    assert(component_mask_to_archetypes_.size() == 1 &&
+           "Arechtype initialization failed");
+}
 
-detail::Archetype *
+EntityId World::create_entity()
+{
+    const EntityId new_entity = next_entity_id_++;
+    // Associate with empty archetype
+    archetypes_.at(0)->add_entity(new_entity);
+    entity_to_archetype_.insert({new_entity, 0});
+
+    return new_entity;
+}
+
+std::pair<detail::Archetype *, World::ArchetypeIdx>
 World::get_or_create_archetype(const detail::ComponentMask &mask)
 {
-    if (auto kv_it = component_mask_to_archetypes_.find(mask);
-        kv_it != component_mask_to_archetypes_.end()) {
-        return kv_it->second.get();
+    for (ArchetypeIdx i = 0; i < archetypes_.size(); ++i) {
+        if (archetypes_[i]->mask_ == mask) {
+            return {archetypes_[i].get(), i};
+        }
     }
 
     // Archetype needs to be created
-    std::unique_ptr<detail::Archetype> new_arch =
-        std::make_unique<detail::Archetype>(mask);
-    auto [kv_it, _] =
-        component_mask_to_archetypes_.emplace(mask, std::move(new_arch));
-    return kv_it->second.get();
+    ArchetypeIdx idx = archetypes_.size();
+    archetypes_.push_back(std::make_unique<detail::Archetype>(mask));
+    component_mask_to_archetypes_.insert({mask, idx});
+
+    return {archetypes_.back().get(), idx};
 }
 } // namespace ecs
