@@ -232,6 +232,14 @@ Query<QueryComponents...> &Query<QueryComponents...>::without()
 }
 
 template <typename... QueryComponents>
+bool Query<QueryComponents...>::matches(detail::ComponentMask mask) const
+{
+    const bool matches_all_included = (mask & include_mask) == include_mask;
+    const bool matches_no_excluded = (mask & exclude_mask) == 0;
+    return matches_all_included && matches_no_excluded;
+}
+
+template <typename... QueryComponents>
 template <WorldType WorldT, typename Func>
 requires ArgsConstCompatible<WorldT, Func>
 void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
@@ -251,9 +259,7 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
 
     for (auto &[component_mask, archetype] :
          world.component_mask_to_archetypes_) {
-        if ((component_mask & include_mask) != include_mask)
-            continue;
-        if ((component_mask & exclude_mask) != 0)
+        if (!matches(component_mask))
             continue;
 
         size_t element_count = archetype->idx_to_entity.size();
@@ -281,9 +287,7 @@ void Query<QueryComponents...>::each_archetype(Func &&func, World &world) const
 {
     for (const auto &[component_mask, archetype] :
          world.component_mask_to_archetypes_) {
-        if ((component_mask & include_mask) != include_mask)
-            continue;
-        if ((component_mask & exclude_mask) != 0)
+        if (!matches(component_mask))
             continue;
 
         func(archetype->entities_to_idx.size(),
@@ -296,9 +300,7 @@ void Query<QueryComponents...>::clear(World &world)
 {
     for (const auto &[component_mask, archetype] :
          world.component_mask_to_archetypes_) {
-        if ((component_mask & include_mask) != include_mask)
-            continue;
-        if ((component_mask & exclude_mask) != 0)
+        if (!matches(component_mask))
             continue;
         archetype->clear_entities();
     }
@@ -313,9 +315,7 @@ size_t Query<QueryComponents...>::size(const World &world) const
     size_t total = 0;
     for (const auto &[component_mask, archetype] :
          world.component_mask_to_archetypes_) {
-        if ((component_mask & include_mask) != include_mask)
-            continue;
-        if ((component_mask & exclude_mask) != 0)
+        if (!matches(component_mask))
             continue;
         total += archetype->entities_to_idx.size();
     }

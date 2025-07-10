@@ -154,6 +154,8 @@ template <typename... QueryComponents> class Query
     [[nodiscard]] size_t size(const World &world) const;
 
   private:
+    bool matches(detail::ComponentMask mask) const;
+
     detail::ComponentMask include_mask;
     detail::ComponentMask exclude_mask;
 };
