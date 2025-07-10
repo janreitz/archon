@@ -192,20 +192,13 @@ class World
     bool has_components(EntityId entity) const;
 
   private:
-    std::vector<std::unique_ptr<detail::Archetype>> archetypes_;
+    std::vector<detail::Archetype> archetypes_;
     using ArchetypeIdx = decltype(archetypes_)::size_type;
 
-    std::pair<detail::Archetype *, ArchetypeIdx>
+    std::pair<detail::Archetype &, ArchetypeIdx>
     get_or_create_archetype(const detail::ComponentMask &mask);
 
-    struct ComponentMaskHash {
-        std::size_t operator()(const detail::ComponentMask &mask) const noexcept
-        {
-            return std::hash<unsigned long long>{}(mask.to_ullong());
-        }
-    };
-
-    std::unordered_map<detail::ComponentMask, ArchetypeIdx, ComponentMaskHash>
+    std::unordered_map<detail::ComponentMask, ArchetypeIdx>
         component_mask_to_archetypes_;
     std::unordered_map<EntityId, ArchetypeIdx> entity_to_archetype_;
     EntityId next_entity_id_ = 0;

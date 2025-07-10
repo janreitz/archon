@@ -162,15 +162,27 @@ bool Archetype::operator==(const Archetype &other)
 
 size_t Archetype::add_entity(EntityId entity)
 {
-    assert(!entities_to_idx.contains(entity) && "Entity already exists");
+    assert(!contains(entity) && "Entity already exists");
 
-    const size_t newIndex = idx_to_entity.size();
+    const size_t newIndex = entity_count();
     idx_to_entity.push_back(entity);
     entities_to_idx.insert({entity, newIndex});
 
     assert(idx_to_entity.size() == entities_to_idx.size() &&
            "Size mismatch after add");
     return newIndex;
+}
+
+size_t Archetype::entity_count() const { return idx_to_entity.size(); }
+
+bool Archetype::contains(EntityId entity) const
+{
+    return entities_to_idx.contains(entity);
+}
+
+size_t Archetype::idx_of(EntityId entity) const
+{
+    return entities_to_idx.at(entity);
 }
 
 void Archetype::remove_entity(EntityId entity)
@@ -184,7 +196,7 @@ void Archetype::remove_entity(EntityId entity)
     }
 
     const size_t mid_index = node_handle.mapped();
-    const size_t last_index = idx_to_entity.size() - 1;
+    const size_t last_index = entity_count() - 1;
 
     // Only update indices if we're not removing the last element
     if (mid_index != last_index) {
@@ -246,24 +258,24 @@ EntityId World::create_entity()
 {
     const EntityId new_entity = next_entity_id_++;
     // Associate with empty archetype
-    archetypes_.at(0)->add_entity(new_entity);
+    archetypes_[0].add_entity(new_entity);
     entity_to_archetype_.insert({new_entity, 0});
 
     return new_entity;
 }
 
-std::pair<detail::Archetype *, World::ArchetypeIdx>
+std::pair<detail::Archetype &, World::ArchetypeIdx>
 World::get_or_create_archetype(const detail::ComponentMask &mask)
 {
     auto kv_it = component_mask_to_archetypes_.find(mask);
     if (kv_it != component_mask_to_archetypes_.end()) {
         const ArchetypeIdx found_idx = kv_it->second;
-        return {archetypes_[found_idx].get(), found_idx};
+        return {archetypes_[found_idx], found_idx};
     }
 
     const ArchetypeIdx new_idx = archetypes_.size();
-    archetypes_.push_back(std::make_unique<detail::Archetype>(mask));
+    archetypes_.emplace_back(mask);
     component_mask_to_archetypes_.insert({mask, new_idx});
-    return {archetypes_.back().get(), new_idx};
+    return {archetypes_.back(), new_idx};
 }
 } // namespace ecs

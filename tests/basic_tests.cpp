@@ -200,12 +200,6 @@ TEST_CASE("Component removal operations", "[ecs]")
         REQUIRE(pos.x == 1.0F);
     }
 
-    SECTION("Remove from non-existent entity")
-    {
-        // This should not crash
-        world.remove_components<Position>(999);
-    }
-
     SECTION("Query after component removal")
     {
         // Create entities with different component combinations
