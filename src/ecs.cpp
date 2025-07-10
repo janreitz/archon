@@ -155,6 +155,11 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
     }
 }
 
+bool Archetype::operator==(const Archetype &other)
+{
+    return mask_ == other.mask_;
+}
+
 size_t Archetype::add_entity(EntityId entity)
 {
     assert(!entities_to_idx.contains(entity) && "Entity already exists");

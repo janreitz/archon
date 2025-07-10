@@ -130,6 +130,12 @@ class Archetype
 {
   public:
     explicit Archetype(const ComponentMask &mask);
+    Archetype(const Archetype &other) = delete;
+    Archetype &operator=(const Archetype &other) = delete;
+    Archetype(Archetype &&other) noexcept = default;
+    Archetype &operator=(Archetype &&other) noexcept = default;
+
+    bool operator==(const Archetype &other);
 
     std::unordered_map<EntityId, size_t> entities_to_idx;
     std::vector<EntityId> idx_to_entity;
