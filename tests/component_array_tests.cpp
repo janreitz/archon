@@ -83,7 +83,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize to add first component
-        array->push_copy(&comp);
+        array->push(&comp);
         REQUIRE(array->size() == 1);
 
         // Set value using placement new
@@ -91,7 +91,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         REQUIRE(array->get<SimpleComponent>(0).value == 42);
 
         // Resize to add second component
-        array->push_copy(&comp);
+        array->push(&comp);
         REQUIRE(array->size() == 2);
         new (array->get_ptr(1)) SimpleComponent(100);
         REQUIRE(array->get<SimpleComponent>(1).value == 100);
@@ -106,7 +106,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
 
         // Resize to add first component
         ComplexComponent complex_comp("first");
-        array->push_copy(&complex_comp);
+        array->push(&complex_comp);
         REQUIRE(array->size() == 1);
 
         // Construct in place
@@ -114,7 +114,7 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
 
         // Resize to add second component
         ComplexComponent complex_comp2("second");
-        array->push_copy(&complex_comp2);
+        array->push(&complex_comp2);
         REQUIRE(array->size() == 2);
         REQUIRE(array->get<ComplexComponent>(1).name == "second");
 
@@ -135,7 +135,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         for (int i = 0; i < 3; ++i) {
             SimpleComponent comp(i * 10);
-            array->push_copy(&comp);
+            array->push(&comp);
         }
         REQUIRE(array->size() == 3);
 
@@ -162,7 +162,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         for (int i = 0; i < 3; ++i) {
             ComplexComponent comp(names[i]);
-            array->push_copy(&comp);
+            array->push(&comp);
         }
         REQUIRE(array->size() == 3);
 
@@ -186,9 +186,9 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         // Resize and add two components
         ComplexComponent comp1("first");
-        array->push_move(&comp1);
+        array->push(&comp1, true);
         ComplexComponent comp2("second");
-        array->push_move(&comp2);
+        array->push(&comp2, true);
 
         REQUIRE(array->size() == 2);
 
@@ -203,7 +203,7 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         ComplexComponent comp("only");
-        array->push_from(&comp);
+        array->push(&comp);
         REQUIRE(array->size() == 1);
 
         // Remove the only element
@@ -225,11 +225,11 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
 
             ComplexComponent comp{"test"};
             // Resize and add several components
-            array->push_copy(&comp);
-            array->push_copy(&comp);
-            array->push_copy(&comp);
-            array->push_copy(&comp);
-            array->push_copy(&comp);
+            array->push(&comp);
+            array->push(&comp);
+            array->push(&comp);
+            array->push(&comp);
+            array->push(&comp);
 
             REQUIRE(array->size() == 5);
             // Array destructor should properly destroy all components
@@ -247,11 +247,11 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
 
         SimpleComponent comp{0};
         SimpleComponent comp4{4};
-        array->push_copy(&comp);
-        array->push_copy(&comp);
-        array->push_copy(&comp);
-        array->push_copy(&comp);
-        array->push_copy(&comp4);
+        array->push(&comp);
+        array->push(&comp);
+        array->push(&comp);
+        array->push(&comp);
+        array->push(&comp4);
         REQUIRE(array->size() == 5);
 
         // Verify components were stored correctly

@@ -21,12 +21,8 @@ class ComponentArray
 
     [[nodiscard]] size_t size() const;
 
-    // Choose copy or move based on type traits
-    void push_from(void *src);
-    // Copy construct from source
-    void push_copy(void *src);
-    // Move construct from source
-    void push_move(void *src);
+    // Chooses optimal transition strategy based on type traits.
+    void push(void *src, bool allow_move = false);
     void reserve(size_t size);
     void clear();
     void remove(size_t idx);
@@ -358,11 +354,8 @@ void World::add_components(EntityId entity, Components &&...component)
                 detail::ComponentRegistry::instance()
                     .get_component_type_id<DecayedType>();
             auto &component_array = target_archetype->components[id];
-            if constexpr (std::is_rvalue_reference_v<Components &&>) {
-                component_array->push_move(&component);
-            } else {
-                component_array->push_copy(&component);
-            }
+            component_array->push(&component,
+                                  std::is_rvalue_reference_v<Components &&>);
         }(),
         ...);
 
@@ -373,7 +366,7 @@ void World::add_components(EntityId entity, Components &&...component)
         const size_t old_index = current_archetype->entities_to_idx[entity];
         for (const auto &[comp_id, old_array] : current_archetype->components) {
             auto &target_array = target_archetype->components[comp_id];
-            target_array->push_from(old_array->get_ptr(old_index));
+            target_array->push(old_array->get_ptr(old_index), true);
         }
         current_archetype->remove_entity(entity);
     }
@@ -431,8 +424,8 @@ template <typename... Components> void World::remove_components(EntityId entity)
     for (const auto &[comp_id, old_array] : current_archetype->components) {
         // Only copy components that exist in the target archetype
         if (target_mask.test(comp_id)) {
-            target_archetype->components[comp_id]->push_from(
-                old_array->get_ptr(old_idx));
+            target_archetype->components[comp_id]->push(
+                old_array->get_ptr(old_idx), true);
         }
     }
 
