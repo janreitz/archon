@@ -15,7 +15,7 @@ namespace detail
 class ComponentArray
 {
   public:
-    template <typename T> static std::unique_ptr<ComponentArray> create();
+    template <typename T> static ComponentArray create();
 
     ~ComponentArray();
 
@@ -81,7 +81,7 @@ template <typename T> void ComponentRegistry::register_component()
     component_ids.insert({type_idx, meta_id});
 
     ComponentTypeInfo meta_array{
-        .create_array = []() -> std::unique_ptr<ComponentArray> {
+        .create_array = []() -> ComponentArray {
             return ComponentArray::create<T>();
         },
         .default_constructor = [](void *dst) { new (dst) T(); },
@@ -117,13 +117,13 @@ template <typename... Components> ComponentMask get_component_mask()
     return mask;
 }
 
-template <typename T> std::unique_ptr<ComponentArray> ComponentArray::create()
+template <typename T> ComponentArray ComponentArray::create()
 {
     const auto meta_id =
         ComponentRegistry::instance().get_component_type_id<T>();
     const auto &meta =
         ComponentRegistry::instance().get_component_type_info(meta_id);
-    return std::unique_ptr<ComponentArray>(new ComponentArray(meta_id, meta));
+    return ComponentArray(meta_id, meta);
 }
 
 class Archetype
@@ -137,9 +137,9 @@ class Archetype
 
     bool operator==(const Archetype &other);
 
+    std::unordered_map<ComponentTypeId, ComponentArray> components;
     std::vector<EntityId> idx_to_entity;
-    std::unordered_map<ComponentTypeId, std::unique_ptr<ComponentArray>>
-        components;
+
     const ComponentMask mask_;
 
     template <typename T> T *data();
@@ -177,7 +177,7 @@ template <typename T> T *Archetype::data()
     assert(components.contains(id) &&
            "Archetype does not store component type");
 
-    return components[id]->data<T>();
+    return components.at(id).data<T>();
 }
 
 template <typename T> T &Archetype::get_component(size_t index)
@@ -190,7 +190,7 @@ template <typename T> T &Archetype::get_component(size_t index)
     assert(components.contains(id) &&
            "Archetype does not store component type");
 
-    return components[id]->get<T>(index);
+    return components.at(id).get<T>(index);
 }
 
 template <typename T> T &Archetype::get_component(EntityId entity)
@@ -366,9 +366,9 @@ void World::add_components(EntityId entity, Components &&...component)
             const detail::ComponentTypeId id =
                 detail::ComponentRegistry::instance()
                     .get_component_type_id<DecayedType>();
-            auto &component_array = target_archetype.components[id];
-            component_array->push(&component,
-                                  std::is_rvalue_reference_v<Components &&>);
+            auto &component_array = target_archetype.components.at(id);
+            component_array.push(&component,
+                                 std::is_rvalue_reference_v<Components &&>);
         }(),
         ...);
 
@@ -377,9 +377,9 @@ void World::add_components(EntityId entity, Components &&...component)
     // are not directly available
     auto &current_archetype = archetypes_[current_archetype_idx];
     const size_t old_index = current_archetype.idx_of(entity);
-    for (const auto &[comp_id, old_array] : current_archetype.components) {
-        auto &target_array = target_archetype.components[comp_id];
-        target_array->push(old_array->get_ptr(old_index), true);
+    for (auto &[comp_id, old_array] : current_archetype.components) {
+        auto &target_array = target_archetype.components.at(comp_id);
+        target_array.push(old_array.get_ptr(old_index), true);
     }
     current_archetype.remove_entity(entity);
 
@@ -420,12 +420,12 @@ template <typename... Components> void World::remove_components(EntityId entity)
     // Add entity to target archetype
     target_archetype.add_entity(entity);
 
-    // Copy remaining components from current to target archetype
-    for (const auto &[comp_id, old_array] : current_archetype.components) {
+    // Transition remaining components from current to target archetype
+    for (auto &[comp_id, old_array] : current_archetype.components) {
         // Only copy components that exist in the target archetype
         if (target_mask.test(comp_id)) {
-            target_archetype.components[comp_id]->push(
-                old_array->get_ptr(old_idx), true);
+            target_archetype.components.at(comp_id).push(
+                old_array.get_ptr(old_idx), true);
         }
     }
 

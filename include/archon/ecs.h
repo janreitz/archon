@@ -46,7 +46,7 @@ class ComponentArray;
 class Archetype;
 
 struct ComponentTypeInfo {
-    using CreateArrayFn = std::unique_ptr<ComponentArray> (*)();
+    using CreateArrayFn = ComponentArray (*)();
     using DefaultConstructorFn = void (*)(void *dst);
     using DestructorFn = void (*)(void *);
     using CopyConstructorFn = void (*)(void *dst, void *src);

@@ -150,7 +150,8 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
             const auto &meta =
                 ComponentRegistry::instance().get_component_type_info(
                     static_cast<ComponentTypeId>(id));
-            components[static_cast<ComponentTypeId>(id)] = meta.create_array();
+            components.emplace(static_cast<ComponentTypeId>(id),
+                               meta.create_array());
         }
     }
 }
@@ -208,7 +209,7 @@ void Archetype::remove_entity(EntityId entity)
 
     // update component arrays
     for (auto &[_, array] : components) {
-        array->remove(mid_index);
+        array.remove(mid_index);
     }
 
     assert(idx_to_entity.size() == entities_to_idx.size() &&
@@ -220,7 +221,7 @@ void Archetype::clear_entities()
     entities_to_idx.clear();
     idx_to_entity.clear();
     for (auto &[_, component_array] : components) {
-        component_array->clear();
+        component_array.clear();
     }
 }
 

@@ -59,15 +59,13 @@ TEST_CASE("ComponentArray basic operations", "[component_array]")
     SECTION("Create ComponentArray for simple type")
     {
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
-        REQUIRE(array != nullptr);
-        REQUIRE(array->size() == 0);
+        REQUIRE(array.size() == 0);
     }
 
     SECTION("Create ComponentArray for complex type")
     {
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
-        REQUIRE(array != nullptr);
-        REQUIRE(array->size() == 0);
+        REQUIRE(array.size() == 0);
     }
 }
 
@@ -83,21 +81,21 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Resize to add first component
-        array->push(&comp);
-        REQUIRE(array->size() == 1);
+        array.push(&comp);
+        REQUIRE(array.size() == 1);
 
         // Set value using placement new
-        new (array->get_ptr(0)) SimpleComponent(42);
-        REQUIRE(array->get<SimpleComponent>(0).value == 42);
+        new (array.get_ptr(0)) SimpleComponent(42);
+        REQUIRE(array.get<SimpleComponent>(0).value == 42);
 
         // Resize to add second component
-        array->push(&comp);
-        REQUIRE(array->size() == 2);
-        new (array->get_ptr(1)) SimpleComponent(100);
-        REQUIRE(array->get<SimpleComponent>(1).value == 100);
+        array.push(&comp);
+        REQUIRE(array.size() == 2);
+        new (array.get_ptr(1)) SimpleComponent(100);
+        REQUIRE(array.get<SimpleComponent>(1).value == 100);
 
         // Verify first component unchanged
-        REQUIRE(array->get<SimpleComponent>(0).value == 42);
+        REQUIRE(array.get<SimpleComponent>(0).value == 42);
     }
 
     SECTION("Add complex components")
@@ -106,21 +104,21 @@ TEST_CASE("ComponentArray add operations", "[component_array]")
 
         // Resize to add first component
         ComplexComponent complex_comp("first");
-        array->push(&complex_comp);
-        REQUIRE(array->size() == 1);
+        array.push(&complex_comp);
+        REQUIRE(array.size() == 1);
 
         // Construct in place
-        REQUIRE(array->get<ComplexComponent>(0).name == "first");
+        REQUIRE(array.get<ComplexComponent>(0).name == "first");
 
         // Resize to add second component
         ComplexComponent complex_comp2("second");
-        array->push(&complex_comp2);
-        REQUIRE(array->size() == 2);
-        REQUIRE(array->get<ComplexComponent>(1).name == "second");
+        array.push(&complex_comp2);
+        REQUIRE(array.size() == 2);
+        REQUIRE(array.get<ComplexComponent>(1).name == "second");
 
         // Verify both components
-        REQUIRE(array->get<ComplexComponent>(0).name == "first");
-        REQUIRE(array->get<ComplexComponent>(1).name == "second");
+        REQUIRE(array.get<ComplexComponent>(0).name == "first");
+        REQUIRE(array.get<ComplexComponent>(1).name == "second");
     }
 }
 
@@ -135,22 +133,22 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         for (int i = 0; i < 3; ++i) {
             SimpleComponent comp(i * 10);
-            array->push(&comp);
+            array.push(&comp);
         }
-        REQUIRE(array->size() == 3);
+        REQUIRE(array.size() == 3);
 
         // Values should be [0, 10, 20]
-        REQUIRE(array->get<SimpleComponent>(0).value == 0);
-        REQUIRE(array->get<SimpleComponent>(1).value == 10);
-        REQUIRE(array->get<SimpleComponent>(2).value == 20);
+        REQUIRE(array.get<SimpleComponent>(0).value == 0);
+        REQUIRE(array.get<SimpleComponent>(1).value == 10);
+        REQUIRE(array.get<SimpleComponent>(2).value == 20);
 
         // Remove middle element (index 1)
-        array->remove(1);
-        REQUIRE(array->size() == 2);
+        array.remove(1);
+        REQUIRE(array.size() == 2);
 
         // After removal, element at index 1 should be the last element (20)
-        REQUIRE(array->get<SimpleComponent>(0).value == 0);
-        REQUIRE(array->get<SimpleComponent>(1).value == 20);
+        REQUIRE(array.get<SimpleComponent>(0).value == 0);
+        REQUIRE(array.get<SimpleComponent>(1).value == 20);
     }
 
     SECTION("Remove complex components")
@@ -162,22 +160,22 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         for (int i = 0; i < 3; ++i) {
             ComplexComponent comp(names[i]);
-            array->push(&comp);
+            array.push(&comp);
         }
-        REQUIRE(array->size() == 3);
+        REQUIRE(array.size() == 3);
 
         // Verify initial state
-        REQUIRE(array->get<ComplexComponent>(0).name == "first");
-        REQUIRE(array->get<ComplexComponent>(1).name == "second");
-        REQUIRE(array->get<ComplexComponent>(2).name == "third");
+        REQUIRE(array.get<ComplexComponent>(0).name == "first");
+        REQUIRE(array.get<ComplexComponent>(1).name == "second");
+        REQUIRE(array.get<ComplexComponent>(2).name == "third");
 
         // Remove middle element (index 1)
-        array->remove(1);
-        REQUIRE(array->size() == 2);
+        array.remove(1);
+        REQUIRE(array.size() == 2);
 
         // After removal, element at index 1 should be "third" (moved from end)
-        REQUIRE(array->get<ComplexComponent>(0).name == "first");
-        REQUIRE(array->get<ComplexComponent>(1).name == "third");
+        REQUIRE(array.get<ComplexComponent>(0).name == "first");
+        REQUIRE(array.get<ComplexComponent>(1).name == "third");
     }
 
     SECTION("Remove last element")
@@ -186,16 +184,16 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
 
         // Resize and add two components
         ComplexComponent comp1("first");
-        array->push(&comp1, true);
+        array.push(&comp1, true);
         ComplexComponent comp2("second");
-        array->push(&comp2, true);
+        array.push(&comp2, true);
 
-        REQUIRE(array->size() == 2);
+        REQUIRE(array.size() == 2);
 
         // Remove last element
-        array->remove(1);
-        REQUIRE(array->size() == 1);
-        REQUIRE(array->get<ComplexComponent>(0).name == "first");
+        array.remove(1);
+        REQUIRE(array.size() == 1);
+        REQUIRE(array.get<ComplexComponent>(0).name == "first");
     }
 
     SECTION("Remove single element")
@@ -203,12 +201,12 @@ TEST_CASE("ComponentArray remove operations", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<ComplexComponent>();
 
         ComplexComponent comp("only");
-        array->push(&comp);
-        REQUIRE(array->size() == 1);
+        array.push(&comp);
+        REQUIRE(array.size() == 1);
 
         // Remove the only element
-        array->remove(0);
-        REQUIRE(array->size() == 0);
+        array.remove(0);
+        REQUIRE(array.size() == 0);
     }
 }
 
@@ -225,13 +223,13 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
 
             ComplexComponent comp{"test"};
             // Resize and add several components
-            array->push(&comp);
-            array->push(&comp);
-            array->push(&comp);
-            array->push(&comp);
-            array->push(&comp);
+            array.push(&comp);
+            array.push(&comp);
+            array.push(&comp);
+            array.push(&comp);
+            array.push(&comp);
 
-            REQUIRE(array->size() == 5);
+            REQUIRE(array.size() == 5);
             // Array destructor should properly destroy all components
         }
         // If we reach here without crash, destruction worked
@@ -243,19 +241,19 @@ TEST_CASE("ComponentArray memory management", "[component_array]")
         auto array = ecs::detail::ComponentArray::create<SimpleComponent>();
 
         // Reserve space first
-        array->reserve(100);
+        array.reserve(100);
 
         SimpleComponent comp{0};
         SimpleComponent comp4{4};
-        array->push(&comp);
-        array->push(&comp);
-        array->push(&comp);
-        array->push(&comp);
-        array->push(&comp4);
-        REQUIRE(array->size() == 5);
+        array.push(&comp);
+        array.push(&comp);
+        array.push(&comp);
+        array.push(&comp);
+        array.push(&comp4);
+        REQUIRE(array.size() == 5);
 
         // Verify components were stored correctly
-        REQUIRE(array->get<SimpleComponent>(0).value == 0);
-        REQUIRE(array->get<SimpleComponent>(4).value == 4);
+        REQUIRE(array.get<SimpleComponent>(0).value == 0);
+        REQUIRE(array.get<SimpleComponent>(4).value == 4);
     }
 }
