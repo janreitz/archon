@@ -250,17 +250,15 @@ EntityId World::create_entity()
 std::pair<detail::Archetype *, World::ArchetypeIdx>
 World::get_or_create_archetype(const detail::ComponentMask &mask)
 {
-    for (ArchetypeIdx i = 0; i < archetypes_.size(); ++i) {
-        if (archetypes_[i]->mask_ == mask) {
-            return {archetypes_[i].get(), i};
-        }
+    auto kv_it = component_mask_to_archetypes_.find(mask);
+    if (kv_it != component_mask_to_archetypes_.end()) {
+        const ArchetypeIdx found_idx = kv_it->second;
+        return {archetypes_[found_idx].get(), found_idx};
     }
 
-    // Archetype needs to be created
-    ArchetypeIdx idx = archetypes_.size();
+    const ArchetypeIdx new_idx = archetypes_.size();
     archetypes_.push_back(std::make_unique<detail::Archetype>(mask));
-    component_mask_to_archetypes_.insert({mask, idx});
-
-    return {archetypes_.back().get(), idx};
+    component_mask_to_archetypes_.insert({mask, new_idx});
+    return {archetypes_.back().get(), new_idx};
 }
 } // namespace ecs
