@@ -9,6 +9,7 @@ option(ENABLE_PROFILING_FLAGS "Enable profiling-friendly build flags" OFF)
 option(ENABLE_TRACY "Enable Tracy instrumentation" OFF)
 option(BUILD_TESTS "Build Archon library tests" OFF)
 option(BUILD_BENCHMARKS "Build Archon library benchmarks" OFF)
+option(ENABLE_STATIC_ANALYSIS "Enable clang-static-analyzer" OFF)
 
 # Include FetchContent for dependencies
 include(FetchContent)
@@ -125,6 +126,35 @@ if(ENABLE_PROFILING_FLAGS)
         $<$<CONFIG:RelWithDebInfo>:-O3 -g -DNDEBUG -fno-omit-frame-pointer -ginline-points>
     )
     message(STATUS "Archon: Profiling-friendly build flags enabled")
+endif()
+
+# Static analysis with clang-static-analyzer
+if(ENABLE_STATIC_ANALYSIS)
+    # Try different scan-build variants
+    find_program(CLANG_ANALYZER 
+        NAMES scan-build scan-build-14 scan-build-13 scan-build-12
+        PATHS /usr/share/clang/scan-build-14/bin /usr/bin /usr/local/bin
+    )
+    
+    if(CLANG_ANALYZER)
+        message(STATUS "Archon: clang-static-analyzer found at ${CLANG_ANALYZER}")
+        
+        # Add custom target for static analysis
+        add_custom_target(static-analysis
+            COMMAND ${CLANG_ANALYZER} --use-analyzer=${CMAKE_CXX_COMPILER} -o ${CMAKE_BINARY_DIR}/static-analysis-report ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Running clang-static-analyzer on the codebase"
+            VERBATIM
+        )
+        
+        # Add a clean target for analysis reports
+        add_custom_target(clean-static-analysis
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/static-analysis-report
+            COMMENT "Cleaning static analysis reports"
+        )
+    else()
+        message(WARNING "scan-build not found. Install clang-tools or specify path manually.")
+    endif()
 endif()
 
 
