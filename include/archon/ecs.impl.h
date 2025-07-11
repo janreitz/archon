@@ -23,6 +23,7 @@ class ComponentArray
 
     // Chooses optimal transition strategy based on type traits.
     void push(void *src, bool allow_move = false);
+    void push(const void *src);
     void reserve(size_t size);
     void clear();
     void remove(size_t idx);
@@ -87,7 +88,9 @@ template <typename T> void ComponentRegistry::register_component()
         .default_constructor = [](void *dst) { new (dst) T(); },
         .destructor = [](void *obj) { static_cast<T *>(obj)->~T(); },
         .copy_constructor =
-            [](void *dst, void *src) { new (dst) T(*static_cast<T *>(src)); },
+            [](void *dst, const void *src) {
+                new (dst) T(*static_cast<const T *>(src));
+            },
         .move_constructor =
             [](void *dst, void *src) {
                 new (dst) T(std::move(*static_cast<T *>(src)));
@@ -143,6 +146,7 @@ class Archetype
     const ComponentMask mask_;
 
     template <typename T> T *data();
+    template <typename T> const T *data() const;
     template <typename T> T &get_component(size_t index);
     template <typename T> T &get_component(EntityId entity);
     template <typename... Components>
@@ -170,6 +174,17 @@ class Archetype
 };
 
 template <typename T> T *Archetype::data()
+{
+    const ComponentTypeId id =
+        ComponentRegistry::instance().get_component_type_id<T>();
+
+    assert(components.contains(id) &&
+           "Archetype does not store component type");
+
+    return components.at(id).data<T>();
+}
+
+template <typename T> const T *Archetype::data() const
 {
     const ComponentTypeId id =
         ComponentRegistry::instance().get_component_type_id<T>();
@@ -291,13 +306,15 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
                 std::make_tuple(archetype.template data<QueryComponents>()...);
 
             for (size_t idx = 0; idx < element_count; idx++) {
-                if constexpr (detail::has_extra_param<std::tuple<
-                                  Func, QueryComponents...>>::value) {
-                    func(std::get<QueryComponents *>(component_arrays)[idx]...,
-                         archetype.idx_to_entity[idx]);
-                } else {
-                    func(std::get<QueryComponents *>(component_arrays)[idx]...);
-                }
+                [&]<size_t... I>(std::index_sequence<I...>) {
+                    if constexpr (detail::has_extra_param<std::tuple<
+                                      Func, QueryComponents...>>::value) {
+                        func(std::get<I>(component_arrays)[idx]...,
+                             archetype.idx_to_entity[idx]);
+                    } else {
+                        func(std::get<I>(component_arrays)[idx]...);
+                    }
+                }(std::index_sequence_for<QueryComponents...>{});
             }
         });
 }
@@ -367,8 +384,12 @@ void World::add_components(EntityId entity, Components &&...component)
                 detail::ComponentRegistry::instance()
                     .get_component_type_id<DecayedType>();
             auto &component_array = target_archetype.components.at(id);
-            component_array.push(&component,
-                                 std::is_rvalue_reference_v<Components &&>);
+            if constexpr (std::is_const_v<std::remove_reference_t<Components>>) {
+                component_array.push(static_cast<const void*>(&component));
+            } else {
+                component_array.push(&component,
+                                     std::is_rvalue_reference_v<Components &&>);
+            }
         }(),
         ...);
 

@@ -49,7 +49,7 @@ struct ComponentTypeInfo {
     using CreateArrayFn = ComponentArray (*)();
     using DefaultConstructorFn = void (*)(void *dst);
     using DestructorFn = void (*)(void *);
-    using CopyConstructorFn = void (*)(void *dst, void *src);
+    using CopyConstructorFn = void (*)(void *dst, const void *src);
     using MoveConstructorFn = void (*)(void *dst, void *src);
 
     CreateArrayFn create_array;

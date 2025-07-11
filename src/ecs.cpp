@@ -39,6 +39,20 @@ void ComponentArray::push(void *src, bool ok_to_move)
     element_count_++;
 }
 
+void ComponentArray::push(const void *src)
+{
+    maybe_grow((element_count_ + 1) * meta_.component_size);
+
+    auto *dst = data_.data() + element_count_ * meta_.component_size;
+
+    if (meta_.is_trivially_copyable) {
+        std::memcpy(dst, src, meta_.component_size);
+    } else {
+        meta_.copy_constructor(dst, src);
+    }
+    element_count_++;
+}
+
 void ComponentArray::maybe_grow(size_t required_size)
 {
     if (required_size <= data_.size()) {
