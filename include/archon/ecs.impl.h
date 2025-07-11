@@ -150,6 +150,12 @@ class Archetype
 
     template <typename T> T *data();
     template <typename T> const T *data() const;
+    template <typename... Components>
+    std::tuple<Components *...>
+    data_arrays(const std::array<ComponentTypeId, sizeof...(Components)> &ids);
+    template <typename... Components>
+    std::tuple<const Components *...> data_arrays(
+        const std::array<ComponentTypeId, sizeof...(Components)> &ids) const;
     template <typename T> T &get_component(size_t index);
     template <typename T> T &get_component(EntityId entity);
     template <typename... Components>
@@ -182,6 +188,30 @@ template <typename T> const T *Archetype::data() const
            "Archetype does not store component type");
 
     return components.at(id).data<T>();
+}
+
+template <typename... Components>
+std::tuple<Components *...> Archetype::data_arrays(
+    const std::array<ComponentTypeId, sizeof...(Components)> &ids)
+{
+    return [&]<size_t... I>(std::index_sequence<I...>) {
+        // Combine both index sequence (I) and Components parameter packs in the
+        // same fold expression
+        return std::make_tuple(
+            components.at(ids[I]).template data<Components>()...);
+    }(std::index_sequence_for<Components...>{});
+}
+
+template <typename... Components>
+std::tuple<const Components *...> Archetype::data_arrays(
+    const std::array<ComponentTypeId, sizeof...(Components)> &ids) const
+{
+    return [&]<size_t... I>(std::index_sequence<I...>) {
+        // Combine both index sequence (I) and Components parameter packs in the
+        // same fold expression
+        return std::make_tuple(
+            components.at(ids[I]).template data<Components>()...);
+    }(std::index_sequence_for<Components...>{});
 }
 
 template <typename T> T &Archetype::get_component(size_t index)
@@ -221,9 +251,16 @@ template <typename T> void register_component()
 // Query implementation
 template <typename... QueryComponents> Query<QueryComponents...>::Query()
 {
-    (include_mask.set(detail::ComponentRegistry::instance()
-                          .get_component_type_id<QueryComponents>()),
-     ...);
+    size_t counter = 0;
+    (
+        [this, &counter]() {
+            const detail::ComponentTypeId id =
+                detail::ComponentRegistry::instance()
+                    .get_component_type_id<QueryComponents>();
+            include_mask.set(id);
+            component_type_ids[counter++] = id;
+        }(),
+        ...);
 }
 
 template <typename... QueryComponents>
@@ -286,13 +323,14 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
                   "Function arguments must match query value components");
 
     for_each_matching_archetype(
-        std::forward<WorldT>(world), [&func](auto &archetype) {
+        std::forward<WorldT>(world), [this, &func](auto &archetype) {
             size_t element_count = archetype.entity_count();
             if (element_count == 0)
                 return; // Early exit for empty archetypes
 
             auto component_arrays =
-                std::make_tuple(archetype.template data<QueryComponents>()...);
+                archetype.template data_arrays<QueryComponents...>(
+                    component_type_ids);
 
             for (size_t idx = 0; idx < element_count; idx++) {
                 [&]<size_t... I>(std::index_sequence<I...>) {

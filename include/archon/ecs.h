@@ -146,6 +146,8 @@ template <typename... QueryComponents> class Query
 
     detail::ComponentMask include_mask;
     detail::ComponentMask exclude_mask;
+    std::array<detail::ComponentTypeId, sizeof...(QueryComponents)>
+        component_type_ids;
 };
 
 class World
