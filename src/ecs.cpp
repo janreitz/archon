@@ -165,7 +165,7 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
     }
 }
 
-bool Archetype::operator==(const Archetype &other)
+bool Archetype::operator==(const Archetype &other) const
 {
     return mask_ == other.mask_;
 }

@@ -146,7 +146,7 @@ class Archetype
     Archetype(Archetype &&other) noexcept = delete;
     Archetype &operator=(Archetype &&other) noexcept = delete;
 
-    bool operator==(const Archetype &other);
+    bool operator==(const Archetype &other) const;
 
     template <typename T> T *data();
     template <typename T> const T *data() const;
