@@ -99,13 +99,11 @@ else()
         -Wconversion             # Warn about type conversions
         -Wsign-conversion        # Warn about sign conversions
         -Wmisleading-indentation # Warn about misleading indentation
-        -Wduplicated-cond        # Warn about duplicated conditions
-        -Wduplicated-branches    # Warn about duplicated branches
-        -Wlogical-op             # Warn about logical operations
         -Wnull-dereference       # Warn about null dereferences
-        -Wuseless-cast           # Warn about useless casts
         -Wdouble-promotion       # Warn about double promotions
         -Wformat=2               # Extra format string checking
+        # GCC-specific warnings
+        $<$<CXX_COMPILER_ID:GNU>:-Wduplicated-cond>
         $<$<CXX_COMPILER_ID:GNU>:-Wduplicated-branches>
         $<$<CXX_COMPILER_ID:GNU>:-Wlogical-op>
         $<$<CXX_COMPILER_ID:GNU>:-Wuseless-cast>
