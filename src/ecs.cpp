@@ -234,15 +234,6 @@ void Archetype::remove_entity(EntityId entity)
            "Size mismatch after remove");
 }
 
-void Archetype::clear_entities()
-{
-    entities_to_idx.clear();
-    idx_to_entity.clear();
-    for (auto &[_, component_array] : components) {
-        component_array.clear();
-    }
-}
-
 } // namespace ecs::detail
 
 namespace ecs

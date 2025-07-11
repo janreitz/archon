@@ -160,7 +160,6 @@ class Archetype
     EntityIdx entity_count() const;
     bool contains(EntityId entity) const;
     void remove_entity(EntityId entity);
-    void clear_entities();
 };
 
 template <typename T> T *Archetype::data()
