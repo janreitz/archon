@@ -143,11 +143,11 @@ TEST_CASE("Component removal operations", "[ecs]")
 
         // Verify components exist
         auto &pos = world.get_component<Position>(entity);
-        REQUIRE(world.has_component<Velocity>(entity));
+        REQUIRE(world.has_components<Velocity>(entity));
 
         // Remove one component
         world.remove_components<Velocity>(entity);
-        REQUIRE(!world.has_component<Velocity>(entity));
+        REQUIRE(!world.has_components<Velocity>(entity));
 
         // Position should still exist, Velocity should be gone
         pos = world.get_component<Position>(entity);
@@ -169,8 +169,8 @@ TEST_CASE("Component removal operations", "[ecs]")
         // Only Position should remain
         auto &pos = world.get_component<Position>(entity);
         REQUIRE(pos.x == 1.0F);
-        REQUIRE(!world.has_component<Velocity>(entity));
-        REQUIRE(!world.has_component<Health>(entity));
+        REQUIRE(!world.has_components<Velocity>(entity));
+        REQUIRE(!world.has_components<Health>(entity));
     }
 
     SECTION("Remove all components")
@@ -183,8 +183,8 @@ TEST_CASE("Component removal operations", "[ecs]")
         world.remove_components<Position, Velocity>(entity);
 
         // Entity should have no components
-        REQUIRE(!world.has_component<Position>(entity));
-        REQUIRE(!world.has_component<Velocity>(entity));
+        REQUIRE(!world.has_components<Position>(entity));
+        REQUIRE(!world.has_components<Velocity>(entity));
     }
 
     SECTION("Remove non-existent component")
@@ -317,9 +317,9 @@ TEST_CASE("Component array removal with different types",
         world.remove_components<TrivialComponent>(e2);
 
         // Verify remaining entities have correct values
-        REQUIRE(world.has_component<TrivialComponent>(e1));
-        REQUIRE(!world.has_component<TrivialComponent>(e2));
-        REQUIRE(world.has_component<TrivialComponent>(e3));
+        REQUIRE(world.has_components<TrivialComponent>(e1));
+        REQUIRE(!world.has_components<TrivialComponent>(e2));
+        REQUIRE(world.has_components<TrivialComponent>(e3));
 
         REQUIRE(world.get_component<TrivialComponent>(e1).value == 1);
         REQUIRE(world.get_component<TrivialComponent>(e3).value == 3);
@@ -339,9 +339,9 @@ TEST_CASE("Component array removal with different types",
         world.remove_components<NonTrivialComponent>(e2);
 
         // Verify remaining entities
-        REQUIRE(world.has_component<NonTrivialComponent>(e1));
-        REQUIRE(!world.has_component<NonTrivialComponent>(e2));
-        REQUIRE(world.has_component<NonTrivialComponent>(e3));
+        REQUIRE(world.has_components<NonTrivialComponent>(e1));
+        REQUIRE(!world.has_components<NonTrivialComponent>(e2));
+        REQUIRE(world.has_components<NonTrivialComponent>(e3));
 
         REQUIRE(world.get_component<NonTrivialComponent>(e1).name == "first");
         REQUIRE(world.get_component<NonTrivialComponent>(e3).name == "third");
@@ -363,8 +363,8 @@ TEST_CASE("Complex archetype transition scenarios", "[ecs][archetype]")
         world.add_components(entity, NonTrivialComponent{"batch"});
 
         // Verify all components exist
-        REQUIRE(world.has_component<TrivialComponent>(entity));
-        REQUIRE(world.has_component<NonTrivialComponent>(entity));
+        REQUIRE(world.has_components<TrivialComponent>(entity));
+        REQUIRE(world.has_components<NonTrivialComponent>(entity));
 
         auto &trivial = world.get_component<TrivialComponent>(entity);
         auto &non_trivial = world.get_component<NonTrivialComponent>(entity);
@@ -381,8 +381,8 @@ TEST_CASE("Complex archetype transition scenarios", "[ecs][archetype]")
 
         // Remove one component
         world.remove_components<TrivialComponent>(entity);
-        REQUIRE(!world.has_component<TrivialComponent>(entity));
-        REQUIRE(world.has_component<NonTrivialComponent>(entity));
+        REQUIRE(!world.has_components<TrivialComponent>(entity));
+        REQUIRE(world.has_components<NonTrivialComponent>(entity));
 
         // Re-add the component
         world.add_components(entity, TrivialComponent{300});
@@ -418,8 +418,8 @@ TEST_CASE("Complex archetype transition scenarios", "[ecs][archetype]")
 
         // Verify final state
         for (int i = 0; i < NUM_ENTITIES; ++i) {
-            REQUIRE(world.has_component<TrivialComponent>(entities[i]));
-            REQUIRE(world.has_component<NonTrivialComponent>(entities[i]));
+            REQUIRE(world.has_components<TrivialComponent>(entities[i]));
+            REQUIRE(world.has_components<NonTrivialComponent>(entities[i]));
 
             auto &trivial = world.get_component<TrivialComponent>(entities[i]);
             if (i % 2 == 0) {
@@ -445,8 +445,8 @@ TEST_CASE("Edge cases and error conditions", "[ecs][archetype]")
         world.remove_components<TrivialComponent>(entity);
         world.remove_components<NonTrivialComponent>(entity);
 
-        REQUIRE(!world.has_component<TrivialComponent>(entity));
-        REQUIRE(!world.has_component<NonTrivialComponent>(entity));
+        REQUIRE(!world.has_components<TrivialComponent>(entity));
+        REQUIRE(!world.has_components<NonTrivialComponent>(entity));
     }
 
     SECTION("Component data alignment after transitions")
@@ -468,6 +468,6 @@ TEST_CASE("Edge cases and error conditions", "[ecs][archetype]")
 
         // Verify components are properly aligned and accessible
         REQUIRE(world.get_component<SmallComponent>(entity).c == 'A');
-        REQUIRE(world.has_component<LargeComponent>(entity));
+        REQUIRE(world.has_components<LargeComponent>(entity));
     }
 }

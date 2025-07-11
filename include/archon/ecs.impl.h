@@ -478,18 +478,13 @@ std::tuple<const Components &...> World::get_components(EntityId entity) const
     return archetype.template get_components<Components...>(entity);
 }
 
-template <typename Component> bool World::has_component(EntityId entity) const
-{
-    assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
-    const auto &archetype = archetypes_[entity_to_archetype_.at(entity)];
-    return archetype.mask_.test(detail::ComponentRegistry::instance()
-                                    .get_component_type_id<Component>());
-}
-
 template <typename... Components>
 bool World::has_components(EntityId entity) const
 {
-    return (has_component<Components>(entity) && ...);
+    assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
+    const auto test_mask = detail::get_component_mask<Components...>();
+    const auto actual_mask = archetypes_[entity_to_archetype_.at(entity)].mask_;
+    return (test_mask & actual_mask) == test_mask;
 }
 
 } // namespace ecs

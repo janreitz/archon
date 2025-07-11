@@ -187,7 +187,6 @@ class World
     template <typename... Components>
     std::tuple<const Components &...> get_components(EntityId entity) const;
 
-    template <typename Component> bool has_component(EntityId entity) const;
     template <typename... Components>
     bool has_components(EntityId entity) const;
 
