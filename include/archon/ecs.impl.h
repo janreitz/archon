@@ -137,6 +137,9 @@ class Archetype
     using EntityIdx = decltype(idx_to_entity)::size_type;
 
   public:
+    const ComponentMask mask_;
+    std::unordered_map<ComponentTypeId, ComponentArray> components;
+
     explicit Archetype(const ComponentMask &mask);
     Archetype(const Archetype &other) = delete;
     Archetype &operator=(const Archetype &other) = delete;
@@ -145,19 +148,12 @@ class Archetype
 
     bool operator==(const Archetype &other);
 
-    std::unordered_map<ComponentTypeId, ComponentArray> components;
-
-    const ComponentMask mask_;
-
     template <typename T> T *data();
     template <typename T> const T *data() const;
     template <typename T> T &get_component(size_t index);
     template <typename T> T &get_component(EntityId entity);
     template <typename... Components>
     std::tuple<Components &...> get_components(EntityId entity);
-    /// @brief
-    /// @param entity
-    /// @return ComponentArray index of the new entity
     EntityIdx add_entity(EntityId entity);
     EntityId get_entity(EntityIdx idx) const;
     EntityIdx idx_of(EntityId entity) const;
@@ -165,14 +161,6 @@ class Archetype
     bool contains(EntityId entity) const;
     void remove_entity(EntityId entity);
     void clear_entities();
-
-    // Create archetype with additional component
-    std::unique_ptr<Archetype>
-    with_component(const ComponentTypeId &new_comp_id) const;
-
-    // Create archetype without specific component
-    std::unique_ptr<Archetype>
-    without_component(const ComponentTypeId &remove_comp_id) const;
 };
 
 template <typename T> T *Archetype::data()

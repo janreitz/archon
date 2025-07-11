@@ -243,22 +243,6 @@ void Archetype::clear_entities()
     }
 }
 
-std::unique_ptr<Archetype>
-Archetype::with_component(const ComponentTypeId &new_comp_id) const
-{
-    // Collect existing component IDs
-    auto new_mask = mask_;
-    new_mask.set(new_comp_id);
-    return std::make_unique<Archetype>(new_mask);
-}
-
-std::unique_ptr<Archetype>
-Archetype::without_component(const ComponentTypeId &remove_comp_id) const
-{
-    auto new_mask = mask_;
-    new_mask.reset(remove_comp_id);
-    return std::make_unique<Archetype>(new_mask);
-}
 } // namespace ecs::detail
 
 namespace ecs
