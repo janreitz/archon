@@ -111,8 +111,10 @@ concept ConstCompatible =
 
 template <typename WorldT, typename Func>
 concept ArgsConstCompatible =
+    // Function arguments as parameter pack using template type deduction of...
     []<typename... Arguments>(std::tuple<Arguments...> *) {
         return (ConstCompatible<WorldT, Arguments> && ...);
+        // ...the input type
     }(static_cast<typename detail::function_traits<Func>::argument_types *>(
         nullptr));
 
