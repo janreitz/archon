@@ -3,6 +3,7 @@
 #include <bitset>
 #include <cstdint>
 #include <cstring> // std::memcpy
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <tuple>
@@ -65,39 +66,21 @@ struct ComponentTypeInfo {
     bool is_trivially_destructible;
 };
 
-// Helper to get parameter types of a function
-template <typename T> struct function_traits;
+template <typename F> struct signature_extractor {
+};
 
-// For regular functions
-template <typename R, typename... Args> struct function_traits<R(Args...)> {
+// Specialization - pattern matches specific type shapes
+template <typename R, typename... Args>
+struct signature_extractor<std::function<R(Args...)>> {
     using argument_types = std::tuple<Args...>;
     using decayed_argument_types = std::tuple<std::decay_t<Args>...>;
     static constexpr size_t argument_count = sizeof...(Args);
 };
 
-// For function pointers
-template <typename R, typename... Args>
-struct function_traits<R (*)(Args...)> : function_traits<R(Args...)> {
-};
-
-template <typename R, typename... Args>
-struct function_traits<R (&)(Args...)> : function_traits<R(Args...)> {
-};
-
-// For member functions
-template <typename R, typename C, typename... Args>
-struct function_traits<R (C::*)(Args...)> : function_traits<R(Args...)> {
-};
-
-// For const member functions
-template <typename R, typename C, typename... Args>
-struct function_traits<R (C::*)(Args...) const> : function_traits<R(Args...)> {
-};
-
-// For lambdas and functors
-template <typename T>
+// Normalize function signature via std::function CTAD
+template <typename F>
 struct function_traits
-    : function_traits<decltype(&std::remove_reference_t<T>::operator())> {
+    : signature_extractor<decltype(std::function{std::declval<F>()})> {
 };
 
 template <typename T> struct has_extra_param : std::false_type {
