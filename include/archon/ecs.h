@@ -156,8 +156,6 @@ class World
     template <typename... T> friend class Query;
 
   public:
-    World();
-
     EntityId create_entity();
 
     template <typename... Components>
@@ -178,15 +176,13 @@ class World
     bool has_components(EntityId entity) const;
 
   private:
-    std::vector<detail::Archetype> archetypes_;
-    using ArchetypeIdx = decltype(archetypes_)::size_type;
-
-    std::pair<detail::Archetype &, ArchetypeIdx>
+    detail::Archetype &
     get_or_create_archetype(const detail::ComponentMask &mask);
 
-    std::unordered_map<detail::ComponentMask, ArchetypeIdx>
+    std::unordered_map<detail::ComponentMask, detail::Archetype>
         component_mask_to_archetypes_;
-    std::unordered_map<EntityId, ArchetypeIdx> entity_to_archetype_;
+    std::unordered_map<EntityId, std::reference_wrapper<detail::Archetype>>
+        entity_to_archetype_;
     EntityId next_entity_id_ = 0;
 };
 

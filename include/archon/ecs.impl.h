@@ -296,8 +296,8 @@ template <WorldType WorldT, typename Func>
 void Query<QueryComponents...>::for_each_matching_archetype(WorldT &&world,
                                                             Func &&func) const
 {
-    for (auto &archetype : world.archetypes_) {
-        if (!matches(archetype.mask_))
+    for (auto &[mask, archetype] : world.component_mask_to_archetypes_) {
+        if (!matches(mask))
             continue;
 
         func(archetype);
@@ -384,22 +384,18 @@ void World::add_components(EntityId entity, Components &&...component)
     ZoneScoped;
 #endif
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
+    auto &current_archetype = entity_to_archetype_.at(entity).get();
 
-    const auto current_archetype_idx = entity_to_archetype_.at(entity);
+    const detail::ComponentMask current_mask = current_archetype.mask_;
 
-    // Find or create appropriate archetype
-    const detail::ComponentMask current_mask =
-        archetypes_[current_archetype_idx].mask_;
-
-    // Add the new component types to the mask
     const auto add_mask = detail::get_component_mask<Components...>();
     const detail::ComponentMask target_mask = current_mask | add_mask;
 
     assert(current_mask != target_mask && "Adding Components twice");
 
-    auto [target_archetype, target_archetype_idx] =
-        get_or_create_archetype(target_mask);
+    auto &target_archetype = get_or_create_archetype(target_mask);
     target_archetype.add_entity(entity);
+    entity_to_archetype_.insert_or_assign(entity, std::ref(target_archetype));
 
     // Move or copy new components into place
     // Compile-time resolution via fold expression is possible,
@@ -424,16 +420,12 @@ void World::add_components(EntityId entity, Components &&...component)
     // Copy or move existing components from old to new archetype
     // Runtime MetaId Lookup is required, because the old component types
     // are not directly available
-    auto &current_archetype = archetypes_[current_archetype_idx];
     const size_t old_index = current_archetype.idx_of(entity);
     for (auto &[comp_id, old_array] : current_archetype.components) {
         auto &target_array = target_archetype.components.at(comp_id);
         target_array.push(old_array.get_ptr(old_index), true);
     }
     current_archetype.remove_entity(entity);
-
-    // Update entity mapping
-    entity_to_archetype_[entity] = target_archetype_idx;
 }
 
 template <typename... Components> void World::remove_components(EntityId entity)
@@ -443,21 +435,15 @@ template <typename... Components> void World::remove_components(EntityId entity)
 #endif
 
     assert(entity_to_archetype_.contains(entity) && "Entity doesn't exist");
-
-    const auto &current_archetype_idx = entity_to_archetype_[entity];
-
-    assert(archetypes_[current_archetype_idx].contains(entity) &&
-           "Entity should exist in its assigned archetype");
+    auto &current_archetype = entity_to_archetype_.at(entity).get();
 
     const auto remove_mask = detail::get_component_mask<Components...>();
     const detail::ComponentMask target_mask =
-        archetypes_[current_archetype_idx].mask_ & (~remove_mask);
+        current_archetype.mask_ & (~remove_mask);
 
     // Find or create the target archetype
-    auto [target_archetype, target_archetype_idx] =
-        get_or_create_archetype(target_mask);
+    auto &target_archetype = get_or_create_archetype(target_mask);
 
-    auto &current_archetype = archetypes_[current_archetype_idx];
     // If target archetype is the same as current, no migration needed
     if (target_archetype == current_archetype) {
         return;
@@ -468,6 +454,7 @@ template <typename... Components> void World::remove_components(EntityId entity)
 
     // Add entity to target archetype
     target_archetype.add_entity(entity);
+    entity_to_archetype_.insert_or_assign(entity, std::ref(target_archetype));
 
     // Transition remaining components from current to target archetype
     for (auto &[comp_id, old_array] : current_archetype.components) {
@@ -480,40 +467,41 @@ template <typename... Components> void World::remove_components(EntityId entity)
 
     // Remove entity from current archetype
     current_archetype.remove_entity(entity);
-
-    // Update entity mapping
-    entity_to_archetype_[entity] = target_archetype_idx;
 }
 
 template <typename Component> Component &World::get_component(EntityId entity)
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
-    auto &archetype = archetypes_[entity_to_archetype_[entity]];
-    return archetype.template get_component<Component>(entity);
+    return entity_to_archetype_.at(entity)
+        .get()
+        .template get_component<Component>(entity);
 }
 
 template <typename Component>
 const Component &World::get_component(EntityId entity) const
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
-    const auto &archetype = archetypes_.at(entity_to_archetype_.at(entity));
-    return archetype.template get_component<Component>(entity);
+    return entity_to_archetype_.at(entity)
+        .get()
+        .template get_component<Component>(entity);
 }
 
 template <typename... Components>
 std::tuple<Components &...> World::get_components(EntityId entity)
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
-    auto &archetype = archetypes_[entity_to_archetype_[entity]];
-    return archetype.template get_components<Components...>(entity);
+    return entity_to_archetype_.at(entity)
+        .get()
+        .template get_components<Components...>(entity);
 }
 
 template <typename... Components>
 std::tuple<const Components &...> World::get_components(EntityId entity) const
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
-    const auto &archetype = archetypes_.at(entity_to_archetype_.at(entity));
-    return archetype.template get_components<Components...>(entity);
+    return entity_to_archetype_.at(entity)
+        .get()
+        .template get_components<Components...>(entity);
 }
 
 template <typename... Components>
@@ -521,7 +509,7 @@ bool World::has_components(EntityId entity) const
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
     const auto test_mask = detail::get_component_mask<Components...>();
-    const auto actual_mask = archetypes_[entity_to_archetype_.at(entity)].mask_;
+    const auto actual_mask = entity_to_archetype_.at(entity).get().mask_;
     return (test_mask & actual_mask) == test_mask;
 }
 

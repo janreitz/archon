@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring> // For memcpy, size_t
-#include <memory>
 #include <typeindex>
 #include <utility>
 #include <vector>
@@ -239,37 +238,23 @@ void Archetype::remove_entity(EntityId entity)
 namespace ecs
 {
 
-World::World()
-{
-    // Initialize with empty archetype
-    get_or_create_archetype(detail::ComponentMask());
-    assert(entity_to_archetype_.empty() && "");
-    assert(component_mask_to_archetypes_.size() == 1 &&
-           "Arechtype initialization failed");
-}
-
 EntityId World::create_entity()
 {
     const EntityId new_entity = next_entity_id_++;
-    // Associate with empty archetype
-    archetypes_[0].add_entity(new_entity);
-    entity_to_archetype_.insert({new_entity, 0});
-
+    auto &empty_archetype = get_or_create_archetype(detail::ComponentMask());
+    empty_archetype.add_entity(new_entity);
+    entity_to_archetype_.emplace(new_entity, empty_archetype);
     return new_entity;
 }
 
-std::pair<detail::Archetype &, World::ArchetypeIdx>
+detail::Archetype &
 World::get_or_create_archetype(const detail::ComponentMask &mask)
 {
-    auto kv_it = component_mask_to_archetypes_.find(mask);
-    if (kv_it != component_mask_to_archetypes_.end()) {
-        const ArchetypeIdx found_idx = kv_it->second;
-        return {archetypes_[found_idx], found_idx};
-    }
-
-    const ArchetypeIdx new_idx = archetypes_.size();
-    archetypes_.emplace_back(mask);
-    component_mask_to_archetypes_.insert({mask, new_idx});
-    return {archetypes_.back(), new_idx};
+    // A pair consisting of an iterator to the inserted element (or to the
+    // element that prevented the insertion) and a bool value set to true if and
+    // only if the insertion took place.
+    const auto &[iter, insertion_success] =
+        component_mask_to_archetypes_.emplace(mask, mask);
+    return iter->second;
 }
 } // namespace ecs
