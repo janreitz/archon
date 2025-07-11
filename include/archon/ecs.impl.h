@@ -43,13 +43,12 @@ class ComponentArray
     }
 
   private:
-    ComponentArray(ComponentTypeId meta_id, const ComponentTypeInfo &meta);
+    ComponentArray(const ComponentTypeInfo &meta);
 
     void maybe_grow(size_t required_size);
     void destroy_elements();
 
     size_t element_count_ = 0;
-    ComponentTypeId meta_id_;
     ComponentTypeInfo meta_;
     std::vector<uint8_t> data_;
 };
@@ -126,7 +125,7 @@ template <typename T> ComponentArray ComponentArray::create()
         ComponentRegistry::instance().get_component_type_id<T>();
     const auto &meta =
         ComponentRegistry::instance().get_component_type_info(meta_id);
-    return ComponentArray(meta_id, meta);
+    return ComponentArray(meta);
 }
 
 class Archetype
@@ -384,8 +383,9 @@ void World::add_components(EntityId entity, Components &&...component)
                 detail::ComponentRegistry::instance()
                     .get_component_type_id<DecayedType>();
             auto &component_array = target_archetype.components.at(id);
-            if constexpr (std::is_const_v<std::remove_reference_t<Components>>) {
-                component_array.push(static_cast<const void*>(&component));
+            if constexpr (std::is_const_v<
+                              std::remove_reference_t<Components>>) {
+                component_array.push(static_cast<const void *>(&component));
             } else {
                 component_array.push(&component,
                                      std::is_rvalue_reference_v<Components &&>);

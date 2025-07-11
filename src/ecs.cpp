@@ -15,11 +15,7 @@
 namespace ecs::detail
 {
 
-ComponentArray::ComponentArray(ComponentTypeId meta_id,
-                               const ComponentTypeInfo &meta)
-    : meta_id_(meta_id), meta_(meta)
-{
-}
+ComponentArray::ComponentArray(const ComponentTypeInfo &meta) : meta_(meta) {}
 
 ComponentArray::~ComponentArray() { clear(); }
 
