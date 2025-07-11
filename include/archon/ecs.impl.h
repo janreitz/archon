@@ -143,8 +143,8 @@ class Archetype
     explicit Archetype(const ComponentMask &mask);
     Archetype(const Archetype &other) = delete;
     Archetype &operator=(const Archetype &other) = delete;
-    Archetype(Archetype &&other) noexcept = default;
-    Archetype &operator=(Archetype &&other) noexcept = default;
+    Archetype(Archetype &&other) noexcept = delete;
+    Archetype &operator=(Archetype &&other) noexcept = delete;
 
     bool operator==(const Archetype &other);
 
