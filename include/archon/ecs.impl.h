@@ -130,6 +130,12 @@ template <typename T> ComponentArray ComponentArray::create()
 
 class Archetype
 {
+  private:
+    std::vector<EntityId> idx_to_entity;
+    std::unordered_map<EntityId, size_t> entities_to_idx;
+
+    using EntityIdx = decltype(idx_to_entity)::size_type;
+
   public:
     explicit Archetype(const ComponentMask &mask);
     Archetype(const Archetype &other) = delete;
@@ -140,7 +146,6 @@ class Archetype
     bool operator==(const Archetype &other);
 
     std::unordered_map<ComponentTypeId, ComponentArray> components;
-    std::vector<EntityId> idx_to_entity;
 
     const ComponentMask mask_;
 
@@ -153,9 +158,10 @@ class Archetype
     /// @brief
     /// @param entity
     /// @return ComponentArray index of the new entity
-    size_t add_entity(EntityId entity);
-    size_t idx_of(EntityId entity) const;
-    size_t entity_count() const;
+    EntityIdx add_entity(EntityId entity);
+    EntityId get_entity(EntityIdx idx) const;
+    EntityIdx idx_of(EntityId entity) const;
+    EntityIdx entity_count() const;
     bool contains(EntityId entity) const;
     void remove_entity(EntityId entity);
     void clear_entities();
@@ -167,9 +173,6 @@ class Archetype
     // Create archetype without specific component
     std::unique_ptr<Archetype>
     without_component(const ComponentTypeId &remove_comp_id) const;
-
-  private:
-    std::unordered_map<EntityId, size_t> entities_to_idx;
 };
 
 template <typename T> T *Archetype::data()
@@ -309,7 +312,7 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
                     if constexpr (detail::has_extra_param<std::tuple<
                                       Func, QueryComponents...>>::value) {
                         func(std::get<I>(component_arrays)[idx]...,
-                             archetype.idx_to_entity[idx]);
+                             archetype.get_entity(idx));
                     } else {
                         func(std::get<I>(component_arrays)[idx]...);
                     }

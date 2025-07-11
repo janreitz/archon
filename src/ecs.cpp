@@ -171,11 +171,11 @@ bool Archetype::operator==(const Archetype &other)
     return mask_ == other.mask_;
 }
 
-size_t Archetype::add_entity(EntityId entity)
+Archetype::EntityIdx Archetype::add_entity(EntityId entity)
 {
     assert(!contains(entity) && "Entity already exists");
 
-    const size_t newIndex = entity_count();
+    const auto newIndex = entity_count();
     idx_to_entity.push_back(entity);
     entities_to_idx.insert({entity, newIndex});
 
@@ -184,14 +184,22 @@ size_t Archetype::add_entity(EntityId entity)
     return newIndex;
 }
 
-size_t Archetype::entity_count() const { return idx_to_entity.size(); }
+EntityId Archetype::get_entity(EntityIdx idx) const
+{
+    return idx_to_entity[idx];
+}
+
+Archetype::EntityIdx Archetype::entity_count() const
+{
+    return idx_to_entity.size();
+}
 
 bool Archetype::contains(EntityId entity) const
 {
     return entities_to_idx.contains(entity);
 }
 
-size_t Archetype::idx_of(EntityId entity) const
+Archetype::EntityIdx Archetype::idx_of(EntityId entity) const
 {
     return entities_to_idx.at(entity);
 }
