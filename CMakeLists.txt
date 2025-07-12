@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(archon VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
 # Add options
 option(ENABLE_PROFILING_FLAGS "Enable profiling-friendly build flags" OFF)
 option(ENABLE_TRACY "Enable Tracy instrumentation" OFF)
@@ -57,6 +54,9 @@ target_include_directories(archon
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+# Require C++20 for this library and any targets that link to it
+target_compile_features(archon PUBLIC cxx_std_20)
 
 # Compiler-specific warning flags
 if(MSVC)
