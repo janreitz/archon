@@ -216,10 +216,9 @@ TEST_CASE("ECS Component Type Scaling", "[benchmark][ecs][scaling]")
     constexpr std::size_t ENTITY_COUNT = 5000;
     constexpr std::size_t COMPONENT_SIZE = 128;
 
-    auto measure = [&dummy_accumulator,
-                    &COMPONENT_SIZE](Catch::Benchmark::Chronometer &meter,
-                                     ecs::World &world) {
-        meter.measure([&world, &dummy_accumulator, &COMPONENT_SIZE] {
+    auto measure = [&dummy_accumulator](Catch::Benchmark::Chronometer &meter,
+                                        ecs::World &world) {
+        meter.measure([&world, &dummy_accumulator] {
             dummy_accumulator = 0;
             ecs::Query<benchmark::BenchmarkComponent<1, COMPONENT_SIZE>>().each(
                 world,
