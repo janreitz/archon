@@ -182,9 +182,9 @@ find_package(archon REQUIRED)
 target_link_libraries(your_target PRIVATE archon::archon)
 ```
 
-#### Using with CPM.cmake                                        
+#### [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake)
 ```cmake                 
-CPMAddPackage("gh:janreitz/archon@main")
+CPMAddPackage("gh:janreitz/archon#main")
 target_link_libraries(your_target archon)
 ```
 
