@@ -145,6 +145,7 @@ class Archetype
     Archetype &operator=(const Archetype &other) = delete;
     Archetype(Archetype &&other) noexcept = delete;
     Archetype &operator=(Archetype &&other) noexcept = delete;
+    ~Archetype();
 
     bool operator==(const Archetype &other) const;
 
@@ -166,7 +167,10 @@ class Archetype
     EntityIdx entity_count() const;
     bool contains(EntityId entity) const;
     void remove_entity(EntityId entity);
+    void clear();
 };
+
+inline Archetype::~Archetype() { clear(); }
 
 template <typename T> T *Archetype::data()
 {
@@ -359,8 +363,8 @@ void Query<QueryComponents...>::each_archetype(Func &&func, World &world) const
 template <typename... QueryComponents>
 void Query<QueryComponents...>::clear(World &world)
 {
-    for_each_matching_archetype(
-        world, [](auto &archetype) { archetype.clear_entities(); });
+    for_each_matching_archetype(world,
+                                [](auto &archetype) { archetype.clear(); });
 }
 
 template <typename... QueryComponents>
