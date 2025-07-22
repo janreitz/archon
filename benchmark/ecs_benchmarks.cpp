@@ -17,6 +17,14 @@ constexpr std::size_t COMPONENT_DATA_SIZE = 128;
 using ComponentA = benchmark::BenchmarkComponent<1, COMPONENT_DATA_SIZE>;
 using ComponentB = benchmark::BenchmarkComponent<2, COMPONENT_DATA_SIZE>;
 
+// Multi-archetype component definitions
+using Position = benchmark::BenchmarkComponent<10, 24>;     // 3D position (3 * 8 bytes)
+using Velocity = benchmark::BenchmarkComponent<11, 24>;     // 3D velocity (3 * 8 bytes)  
+using Renderable = benchmark::BenchmarkComponent<12, 64>;   // Render data (mesh, texture info)
+using Health = benchmark::BenchmarkComponent<13, 8>;        // Health points
+using Mass = benchmark::BenchmarkComponent<14, 8>;          // Physics mass
+using Collider = benchmark::BenchmarkComponent<15, 32>;     // Collision data
+
 // Helper to set up a world with entities having two BenchComp components
 void setup_world_two_components(ecs::World &world, std::size_t entity_count)
 {
@@ -314,6 +322,304 @@ TEST_CASE("ECS Setup Performance Comparison", "[benchmark][ecs][setup]")
                 COMPONENT_COUNT, COMPONENT_SIZE>(world, ENTITY_COUNT);
             return ENTITY_COUNT; // Just return something to prevent
                                  // optimization
+        });
+    };
+}
+
+// Multi-archetype setup functions
+
+// Scenario 1: Game Entities (70% Position+Velocity, 20% Position+Velocity+Renderable, 10% Position+Health)
+void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
+{
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Renderable>();
+    ecs::register_component<Health>();
+    
+    std::size_t moving_entities = static_cast<std::size_t>(total_entities * 0.70);
+    std::size_t renderable_entities = static_cast<std::size_t>(total_entities * 0.20);
+    std::size_t damageable_entities = total_entities - moving_entities - renderable_entities;
+    
+    // 70% Moving objects (Position + Velocity)
+    for (std::size_t i = 0; i < moving_entities; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity, 
+            benchmark::initialize_sequential<10, 24>(i),      // Position
+            benchmark::initialize_sequential<11, 24>(i + 100) // Velocity
+        );
+    }
+    
+    // 20% Renderable moving objects (Position + Velocity + Renderable)
+    for (std::size_t i = 0; i < renderable_entities; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i + moving_entities),          // Position
+            benchmark::initialize_sequential<11, 24>(i + moving_entities + 100),    // Velocity
+            benchmark::initialize_sequential<12, 64>(i + moving_entities + 200)     // Renderable
+        );
+    }
+    
+    // 10% Damageable objects (Position + Health)
+    for (std::size_t i = 0; i < damageable_entities; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i + moving_entities + renderable_entities),        // Position
+            benchmark::initialize_sequential<13, 8>(i + moving_entities + renderable_entities + 300)   // Health
+        );
+    }
+}
+
+// Scenario 2: Simulation Entities (50% Position+Velocity, 30% Position+Velocity+Mass+Collider, 20% Position+Velocity+Mass+Collider+Health)
+void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_entities)
+{
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Mass>();
+    ecs::register_component<Collider>();
+    ecs::register_component<Health>();
+    
+    std::size_t basic_particles = static_cast<std::size_t>(total_entities * 0.50);
+    std::size_t physics_objects = static_cast<std::size_t>(total_entities * 0.30);
+    std::size_t interactive_objects = total_entities - basic_particles - physics_objects;
+    
+    // 50% Basic particles (Position + Velocity)
+    for (std::size_t i = 0; i < basic_particles; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i),      // Position
+            benchmark::initialize_sequential<11, 24>(i + 100) // Velocity
+        );
+    }
+    
+    // 30% Physics objects (Position + Velocity + Mass + Collider)
+    for (std::size_t i = 0; i < physics_objects; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i + basic_particles),          // Position
+            benchmark::initialize_sequential<11, 24>(i + basic_particles + 100),    // Velocity
+            benchmark::initialize_sequential<14, 8>(i + basic_particles + 200),     // Mass
+            benchmark::initialize_sequential<15, 32>(i + basic_particles + 300)     // Collider
+        );
+    }
+    
+    // 20% Interactive objects (Position + Velocity + Mass + Collider + Health)
+    for (std::size_t i = 0; i < interactive_objects; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i + basic_particles + physics_objects),        // Position
+            benchmark::initialize_sequential<11, 24>(i + basic_particles + physics_objects + 100),  // Velocity
+            benchmark::initialize_sequential<14, 8>(i + basic_particles + physics_objects + 200),   // Mass
+            benchmark::initialize_sequential<15, 32>(i + basic_particles + physics_objects + 300),  // Collider
+            benchmark::initialize_sequential<13, 8>(i + basic_particles + physics_objects + 400)    // Health
+        );
+    }
+}
+
+// Scenario 3: Sparse Query Scenario (few entities match complex queries)
+void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
+{
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Mass>();
+    ecs::register_component<Health>();
+    
+    // 80% entities have only Position
+    std::size_t position_only = static_cast<std::size_t>(total_entities * 0.80);
+    // 15% entities have Position + Velocity
+    std::size_t position_velocity = static_cast<std::size_t>(total_entities * 0.15);
+    // 5% entities have Position + Velocity + Mass + Health (target for sparse query)
+    std::size_t full_entities = total_entities - position_only - position_velocity;
+    
+    // Position-only entities
+    for (std::size_t i = 0; i < position_only; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity, benchmark::initialize_sequential<10, 24>(i));
+    }
+    
+    // Position + Velocity entities
+    for (std::size_t i = 0; i < position_velocity; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i + position_only),
+            benchmark::initialize_sequential<11, 24>(i + position_only + 100)
+        );
+    }
+    
+    // Full entities (Position + Velocity + Mass + Health)
+    for (std::size_t i = 0; i < full_entities; ++i) {
+        auto entity = world.create_entity();
+        world.add_components(entity,
+            benchmark::initialize_sequential<10, 24>(i + position_only + position_velocity),
+            benchmark::initialize_sequential<11, 24>(i + position_only + position_velocity + 100),
+            benchmark::initialize_sequential<14, 8>(i + position_only + position_velocity + 200),
+            benchmark::initialize_sequential<13, 8>(i + position_only + position_velocity + 300)
+        );
+    }
+}
+
+TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype]")
+{
+    uint64_t dummy_accumulator = 0;
+    constexpr std::size_t ENTITY_COUNT = 10000;
+
+    // Game Entities Scenario - Query Position + Velocity (90% entities match)
+    BENCHMARK_ADVANCED("Game Entities: Position+Velocity Query (90% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_game_entities_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position, Velocity>().each(
+                world, [&](Position &pos, Velocity &vel) {
+                    dummy_accumulator += pos.data_[0] + vel.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Game Entities Scenario - Query Position only (100% entities match)
+    BENCHMARK_ADVANCED("Game Entities: Position Query (100% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_game_entities_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position>().each(
+                world, [&](Position &pos) {
+                    dummy_accumulator += pos.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Game Entities Scenario - Query Position + Health (10% entities match)
+    BENCHMARK_ADVANCED("Game Entities: Position+Health Query (10% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_game_entities_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position, Health>().each(
+                world, [&](Position &pos, Health &health) {
+                    dummy_accumulator += pos.data_[0] + health.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Simulation Entities Scenario - Query Position + Velocity (all match)
+    BENCHMARK_ADVANCED("Simulation: Position+Velocity Query (100% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_simulation_entities_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position, Velocity>().each(
+                world, [&](Position &pos, Velocity &vel) {
+                    dummy_accumulator += pos.data_[0] + vel.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Simulation Entities Scenario - Complex query (20% entities match)
+    BENCHMARK_ADVANCED("Simulation: Position+Velocity+Mass+Health Query (20% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_simulation_entities_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position, Velocity, Mass, Health>().each(
+                world, [&](Position &pos, Velocity &vel, 
+                          Mass &mass, Health &health) {
+                    dummy_accumulator += pos.data_[0] + vel.data_[0] + mass.data_[0] + health.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Sparse Query Scenario - Very selective query (5% entities match)
+    BENCHMARK_ADVANCED("Sparse: Position+Velocity+Mass+Health Query (5% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_sparse_query_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position, Velocity, Mass, Health>().each(
+                world, [&](Position &pos, Velocity &vel, 
+                          Mass &mass, Health &health) {
+                    dummy_accumulator += pos.data_[0] + vel.data_[0] + mass.data_[0] + health.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Sparse Query Scenario - Broad query (100% entities match)
+    BENCHMARK_ADVANCED("Sparse: Position Query (100% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_sparse_query_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position>().each(
+                world, [&](Position &pos) {
+                    dummy_accumulator += pos.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+}
+
+TEST_CASE("Archetype vs Single-Type Performance Comparison", "[benchmark][ecs][archetype-comparison]")
+{
+    uint64_t dummy_accumulator = 0;
+    constexpr std::size_t ENTITY_COUNT = 10000;
+
+    // Single archetype baseline (all entities have same components)
+    BENCHMARK_ADVANCED("Single Archetype: Position+Velocity Query")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_world_two_components(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<ComponentA, ComponentB>().each(
+                world, [&](ComponentA &a, ComponentB &b) {
+                    dummy_accumulator += a.data_[0] + b.data_[0];
+                });
+            return dummy_accumulator;
+        });
+    };
+
+    // Multi-archetype with same query selectivity
+    BENCHMARK_ADVANCED("Multi-Archetype: Position+Velocity Query (90% match)")
+    (Catch::Benchmark::Chronometer meter)
+    {
+        ecs::World world;
+        setup_game_entities_scenario(world, ENTITY_COUNT);
+
+        meter.measure([&world, &dummy_accumulator] {
+            dummy_accumulator = 0;
+            ecs::Query<Position, Velocity>().each(
+                world, [&](Position &pos, Velocity &vel) {
+                    dummy_accumulator += pos.data_[0] + vel.data_[0];
+                });
+            return dummy_accumulator;
         });
     };
 }
