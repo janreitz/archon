@@ -110,7 +110,7 @@ ComponentTypeId ComponentRegistry::get_component_type_id() const
     return get_component_type_id(typeid(std::decay_t<T>));
 }
 
-template <typename... Components> constexpr ComponentMask get_component_mask()
+template <typename... Components> ComponentMask get_component_mask()
 {
     ComponentMask mask;
     (mask.set(
