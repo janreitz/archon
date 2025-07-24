@@ -18,12 +18,12 @@ using ComponentA = benchmark::BenchmarkComponent<1, COMPONENT_DATA_SIZE>;
 using ComponentB = benchmark::BenchmarkComponent<2, COMPONENT_DATA_SIZE>;
 
 // Multi-archetype component definitions
-using Position = benchmark::BenchmarkComponent<10, 24>;     // 3D position (3 * 8 bytes)
-using Velocity = benchmark::BenchmarkComponent<11, 24>;     // 3D velocity (3 * 8 bytes)  
-using Renderable = benchmark::BenchmarkComponent<12, 64>;   // Render data (mesh, texture info)
-using Health = benchmark::BenchmarkComponent<13, 8>;        // Health points
-using Mass = benchmark::BenchmarkComponent<14, 8>;          // Physics mass
-using Collider = benchmark::BenchmarkComponent<15, 32>;     // Collision data
+using Position = benchmark::BenchmarkComponent<3, 24>;      // 3D position (3 * 8 bytes)
+using Velocity = benchmark::BenchmarkComponent<4, 24>;      // 3D velocity (3 * 8 bytes)  
+using Renderable = benchmark::BenchmarkComponent<5, 64>;    // Render data (mesh, texture info)
+using Health = benchmark::BenchmarkComponent<6, 8>;         // Health points
+using Mass = benchmark::BenchmarkComponent<7, 8>;           // Physics mass
+using Collider = benchmark::BenchmarkComponent<8, 32>;      // Collision data
 
 // Helper to set up a world with entities having two BenchComp components
 void setup_world_two_components(ecs::World &world, std::size_t entity_count)
@@ -36,10 +36,8 @@ void setup_world_two_components(ecs::World &world, std::size_t entity_count)
         auto e = world.create_entity();
         world.add_components(
             e,
-            benchmark::initialize_sequential<1, COMPONENT_DATA_SIZE>(
-                static_cast<uint8_t>(i)),
-            benchmark::initialize_sequential<2, COMPONENT_DATA_SIZE>(
-                static_cast<uint8_t>(i + entity_count)));
+            ComponentA::initialize_sequential(static_cast<uint8_t>(i)),
+            ComponentB::initialize_sequential(static_cast<uint8_t>(i + entity_count)));
     }
 }
 
@@ -54,10 +52,8 @@ std::vector<AoSBenchmark> setup_aos_data(std::size_t entity_count)
     std::vector<AoSBenchmark> data_vec;
     data_vec.resize(entity_count);
     for (std::size_t i = 0; i < entity_count; ++i) {
-        data_vec[i] = {benchmark::initialize_sequential<1, COMPONENT_DATA_SIZE>(
-                           static_cast<uint8_t>(i)),
-                       benchmark::initialize_sequential<2, COMPONENT_DATA_SIZE>(
-                           static_cast<uint8_t>(i + entity_count))};
+        data_vec[i] = {ComponentA::initialize_sequential(static_cast<uint8_t>(i)),
+                       ComponentB::initialize_sequential(static_cast<uint8_t>(i + entity_count))};
     }
     return data_vec;
 }
@@ -76,11 +72,9 @@ SoABenchmark setup_soa_data(std::size_t entity_count)
 
     for (std::size_t i = 0; i < entity_count; ++i) {
         data.comp_a_data.push_back(
-            benchmark::initialize_sequential<1, COMPONENT_DATA_SIZE>(
-                static_cast<uint8_t>(i)));
+            ComponentA::initialize_sequential(static_cast<uint8_t>(i)));
         data.comp_b_data.push_back(
-            benchmark::initialize_sequential<2, COMPONENT_DATA_SIZE>(
-                static_cast<uint8_t>(i + entity_count)));
+            ComponentB::initialize_sequential(static_cast<uint8_t>(i + entity_count)));
     }
     return data;
 }
@@ -97,12 +91,8 @@ struct RawArrayBenchmark {
         comp_b_data = new ComponentB[entity_count];
 
         for (std::size_t i = 0; i < entity_count; ++i) {
-            comp_a_data[i] =
-                benchmark::initialize_sequential<1, COMPONENT_DATA_SIZE>(
-                    static_cast<uint8_t>(i));
-            comp_b_data[i] =
-                benchmark::initialize_sequential<2, COMPONENT_DATA_SIZE>(
-                    static_cast<uint8_t>(i + entity_count));
+            comp_a_data[i] = ComponentA::initialize_sequential(static_cast<uint8_t>(i));
+            comp_b_data[i] = ComponentB::initialize_sequential(static_cast<uint8_t>(i + entity_count));
         }
     }
 
@@ -197,8 +187,7 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
         for (std::size_t i = 0; i < ENTITY_COUNT_FOR_BENCHMARK; ++i) {
             auto e = world.create_entity();
             world.add_components(
-                e, benchmark::initialize_sequential<1, COMPONENT_DATA_SIZE>(
-                       static_cast<uint8_t>(i)));
+                e, ComponentA::initialize_sequential(static_cast<uint8_t>(i)));
         }
 
         meter.measure([&world, &dummy_accumulator] {
@@ -344,8 +333,8 @@ void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
     for (std::size_t i = 0; i < moving_entities; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity, 
-            benchmark::initialize_sequential<10, 24>(i),      // Position
-            benchmark::initialize_sequential<11, 24>(i + 100) // Velocity
+            Position::initialize_sequential(i),
+            Velocity::initialize_sequential(i + 100)
         );
     }
     
@@ -353,9 +342,9 @@ void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
     for (std::size_t i = 0; i < renderable_entities; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i + moving_entities),          // Position
-            benchmark::initialize_sequential<11, 24>(i + moving_entities + 100),    // Velocity
-            benchmark::initialize_sequential<12, 64>(i + moving_entities + 200)     // Renderable
+            Position::initialize_sequential(i + moving_entities),
+            Velocity::initialize_sequential(i + moving_entities + 100),
+            Renderable::initialize_sequential(i + moving_entities + 200)
         );
     }
     
@@ -363,8 +352,8 @@ void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
     for (std::size_t i = 0; i < damageable_entities; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i + moving_entities + renderable_entities),        // Position
-            benchmark::initialize_sequential<13, 8>(i + moving_entities + renderable_entities + 300)   // Health
+            Position::initialize_sequential(i + moving_entities + renderable_entities),
+            Health::initialize_sequential(i + moving_entities + renderable_entities + 300)
         );
     }
 }
@@ -386,8 +375,8 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
     for (std::size_t i = 0; i < basic_particles; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i),      // Position
-            benchmark::initialize_sequential<11, 24>(i + 100) // Velocity
+            Position::initialize_sequential(i),
+            Velocity::initialize_sequential(i + 100)
         );
     }
     
@@ -395,10 +384,10 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
     for (std::size_t i = 0; i < physics_objects; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i + basic_particles),          // Position
-            benchmark::initialize_sequential<11, 24>(i + basic_particles + 100),    // Velocity
-            benchmark::initialize_sequential<14, 8>(i + basic_particles + 200),     // Mass
-            benchmark::initialize_sequential<15, 32>(i + basic_particles + 300)     // Collider
+            Position::initialize_sequential(i + basic_particles),
+            Velocity::initialize_sequential(i + basic_particles + 100),
+            Mass::initialize_sequential(i + basic_particles + 200),
+            Collider::initialize_sequential(i + basic_particles + 300)
         );
     }
     
@@ -406,11 +395,11 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
     for (std::size_t i = 0; i < interactive_objects; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i + basic_particles + physics_objects),        // Position
-            benchmark::initialize_sequential<11, 24>(i + basic_particles + physics_objects + 100),  // Velocity
-            benchmark::initialize_sequential<14, 8>(i + basic_particles + physics_objects + 200),   // Mass
-            benchmark::initialize_sequential<15, 32>(i + basic_particles + physics_objects + 300),  // Collider
-            benchmark::initialize_sequential<13, 8>(i + basic_particles + physics_objects + 400)    // Health
+            Position::initialize_sequential(i + basic_particles + physics_objects),
+            Velocity::initialize_sequential(i + basic_particles + physics_objects + 100),
+            Mass::initialize_sequential(i + basic_particles + physics_objects + 200),
+            Collider::initialize_sequential(i + basic_particles + physics_objects + 300),
+            Health::initialize_sequential(i + basic_particles + physics_objects + 400)
         );
     }
 }
@@ -433,15 +422,15 @@ void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
     // Position-only entities
     for (std::size_t i = 0; i < position_only; ++i) {
         auto entity = world.create_entity();
-        world.add_components(entity, benchmark::initialize_sequential<10, 24>(i));
+        world.add_components(entity, Position::initialize_sequential(i));
     }
     
     // Position + Velocity entities
     for (std::size_t i = 0; i < position_velocity; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i + position_only),
-            benchmark::initialize_sequential<11, 24>(i + position_only + 100)
+            Position::initialize_sequential(i + position_only),
+            Velocity::initialize_sequential(i + position_only + 100)
         );
     }
     
@@ -449,10 +438,10 @@ void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
     for (std::size_t i = 0; i < full_entities; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity,
-            benchmark::initialize_sequential<10, 24>(i + position_only + position_velocity),
-            benchmark::initialize_sequential<11, 24>(i + position_only + position_velocity + 100),
-            benchmark::initialize_sequential<14, 8>(i + position_only + position_velocity + 200),
-            benchmark::initialize_sequential<13, 8>(i + position_only + position_velocity + 300)
+            Position::initialize_sequential(i + position_only + position_velocity),
+            Velocity::initialize_sequential(i + position_only + position_velocity + 100),
+            Mass::initialize_sequential(i + position_only + position_velocity + 200),
+            Health::initialize_sequential(i + position_only + position_velocity + 300)
         );
     }
 }

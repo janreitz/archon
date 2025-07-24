@@ -13,30 +13,38 @@ namespace benchmark
 // Tag-based component system for flexible benchmarking
 template <std::size_t id, std::size_t size> struct BenchmarkComponent {
     std::array<uint8_t, size> data_;
+    
+    // Initialize with sequential values starting from 'start_value'
+    static BenchmarkComponent initialize_sequential(std::size_t start_value) {
+        BenchmarkComponent comp;
+        std::iota(comp.data_.begin(), comp.data_.end(), start_value);
+        return comp;
+    }
+    
+    // Initialize with random values between 'min_value' and 'max_value'
+    static BenchmarkComponent initialize_random(uint8_t min_value = 0, uint8_t max_value = 255) {
+        BenchmarkComponent comp;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<uint8_t> dis(min_value, max_value);
+        std::generate(comp.data_.begin(), comp.data_.end(),
+                      [&]() { return dis(gen); });
+        return comp;
+    }
 };
 
-// Initialize BenchmarkComponent with sequential values starting from
-// 'start_value'
+// Legacy standalone functions - use static methods instead
 template <std::size_t id, std::size_t size>
 BenchmarkComponent<id, size> initialize_sequential(std::size_t start_value)
 {
-    BenchmarkComponent<id, size> comp;
-    std::iota(comp.data_.begin(), comp.data_.end(), start_value);
-    return comp;
+    return BenchmarkComponent<id, size>::initialize_sequential(start_value);
 }
 
-// Initialize data_ with random values between 'min_value' and 'max_value'
 template <std::size_t id, std::size_t size>
 BenchmarkComponent<id, size> initialize_random(uint8_t min_value = 0,
                                                uint8_t max_value = 255)
 {
-    BenchmarkComponent<id, size> comp;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<uint8_t> dis(min_value, max_value);
-    std::generate(comp.data_.begin(), comp.data_.end(),
-                  [&]() { return dis(gen); });
-    return comp;
+    return BenchmarkComponent<id, size>::initialize_random(min_value, max_value);
 }
 
 template <std::size_t Count, std::size_t size> void register_components()
