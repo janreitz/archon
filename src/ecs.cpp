@@ -254,6 +254,16 @@ EntityId World::create_entity()
     return new_entity;
 }
 
+bool World::remove_entity(EntityId entity) {
+    auto kv_iter = entity_to_archetype_.find(entity);
+    if (kv_iter == entity_to_archetype_.end()) {
+        return false;
+    }
+    kv_iter->second.get().remove_entity(entity);
+    entity_to_archetype_.erase(kv_iter);
+    return true;
+}
+
 detail::Archetype &
 World::get_or_create_archetype(const detail::ComponentMask &mask)
 {
@@ -264,4 +274,9 @@ World::get_or_create_archetype(const detail::ComponentMask &mask)
         component_mask_to_archetypes_.emplace(mask, mask);
     return iter->second;
 }
+
+size_t World::archetype_count() const {
+    return component_mask_to_archetypes_.size();
+}
+
 } // namespace ecs

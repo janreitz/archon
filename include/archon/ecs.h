@@ -157,6 +157,7 @@ class World
 
   public:
     EntityId create_entity();
+    bool remove_entity(EntityId entity);
 
     template <typename... Components>
     void add_components(EntityId entity, Components &&...component);
@@ -174,6 +175,8 @@ class World
 
     template <typename... Components>
     bool has_components(EntityId entity) const;
+
+    size_t archetype_count() const;
 
   private:
     detail::Archetype &

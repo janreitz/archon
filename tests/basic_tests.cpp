@@ -431,6 +431,173 @@ TEST_CASE("Complex archetype transition scenarios", "[ecs][archetype]")
     }
 }
 
+TEST_CASE("Entity removal operations", "[ecs][entity]")
+{
+    ecs::World world;
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Health>();
+
+    SECTION("Remove entity with no components")
+    {
+        auto entity = world.create_entity();
+        
+        // Remove the entity (should succeed even with no components)
+        bool removed = world.remove_entity(entity);
+        REQUIRE(removed == true);
+        
+        // Entity should no longer exist
+        // Note: has_components will likely crash or return false for non-existent entity
+        // This is expected behavior for invalid entity access
+    }
+
+    SECTION("Remove entity with single component")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F});
+        
+        // Verify entity has components
+        REQUIRE(world.has_components<Position>(entity));
+        
+        // Remove the entity
+        bool removed = world.remove_entity(entity);
+        REQUIRE(removed == true);
+    }
+
+    SECTION("Remove entity with multiple components")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, 
+            Position{1.0F, 2.0F, 3.0F},
+            Velocity{4.0F, 5.0F, 6.0F},
+            Health{100.0F, 100.0F}
+        );
+        
+        // Verify entity has all components
+        REQUIRE(world.has_components<Position>(entity));
+        REQUIRE(world.has_components<Velocity>(entity));
+        REQUIRE(world.has_components<Health>(entity));
+        
+        // Remove the entity
+        bool removed = world.remove_entity(entity);
+        REQUIRE(removed == true);
+    }
+
+    SECTION("Remove non-existent entity")
+    {
+        // Try to remove an entity that was never created
+        ecs::EntityId fake_entity = 9999;
+        bool removed = world.remove_entity(fake_entity);
+        REQUIRE(removed == false);
+    }
+
+    SECTION("Remove entity twice")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F});
+        
+        // First removal should succeed
+        bool first_removal = world.remove_entity(entity);
+        REQUIRE(first_removal == true);
+        
+        // Second removal should fail
+        bool second_removal = world.remove_entity(entity);
+        REQUIRE(second_removal == false);
+    }
+
+    SECTION("Entity removal affects queries")
+    {
+        // Create multiple entities
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+        
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F});
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F});
+        
+        // Initially should have 3 entities with Position
+        int count_before = 0;
+        ecs::Query<Position>().each(world, [&](Position&) {
+            count_before++;
+        });
+        REQUIRE(count_before == 3);
+        
+        // Remove one entity
+        world.remove_entity(e2);
+        
+        // Should now have 2 entities with Position
+        int count_after = 0;
+        ecs::Query<Position>().each(world, [&](Position&) {
+            count_after++;
+        });
+        REQUIRE(count_after == 2);
+    }
+
+    SECTION("Entity removal with mixed archetypes")
+    {
+        // Create entities in different archetypes
+        auto e1 = world.create_entity(); // Position only
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
+        
+        auto e2 = world.create_entity(); // Position + Velocity
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F}, Velocity{1.0F, 0.0F, 0.0F});
+        
+        auto e3 = world.create_entity(); // All three components
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F}, Velocity{2.0F, 0.0F, 0.0F}, Health{100.0F, 100.0F});
+        
+        // Verify initial counts
+        int pos_count = 0, vel_count = 0, health_count = 0;
+        ecs::Query<Position>().each(world, [&](Position&) { pos_count++; });
+        ecs::Query<Velocity>().each(world, [&](Velocity&) { vel_count++; });
+        ecs::Query<Health>().each(world, [&](Health&) { health_count++; });
+        
+        REQUIRE(pos_count == 3);
+        REQUIRE(vel_count == 2);
+        REQUIRE(health_count == 1);
+        
+        // Remove entity from middle archetype
+        world.remove_entity(e2);
+        
+        // Verify counts after removal
+        pos_count = 0; vel_count = 0; health_count = 0;
+        ecs::Query<Position>().each(world, [&](Position&) { pos_count++; });
+        ecs::Query<Velocity>().each(world, [&](Velocity&) { vel_count++; });
+        ecs::Query<Health>().each(world, [&](Health&) { health_count++; });
+        
+        REQUIRE(pos_count == 2);
+        REQUIRE(vel_count == 1);
+        REQUIRE(health_count == 1);
+    }
+
+    SECTION("Entity removal preserves other entities' component data")
+    {
+        // Create entities with unique data
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+        
+        world.add_components(e1, Position{10.0F, 20.0F, 30.0F});
+        world.add_components(e2, Position{40.0F, 50.0F, 60.0F});
+        world.add_components(e3, Position{70.0F, 80.0F, 90.0F});
+        
+        // Remove middle entity
+        world.remove_entity(e2);
+        
+        // Verify remaining entities have correct data
+        auto& pos1 = world.get_component<Position>(e1);
+        auto& pos3 = world.get_component<Position>(e3);
+        
+        REQUIRE(pos1.x == 10.0F);
+        REQUIRE(pos1.y == 20.0F);
+        REQUIRE(pos1.z == 30.0F);
+        
+        REQUIRE(pos3.x == 70.0F);
+        REQUIRE(pos3.y == 80.0F);
+        REQUIRE(pos3.z == 90.0F);
+    }
+}
+
 TEST_CASE("Edge cases and error conditions", "[ecs][archetype]")
 {
     ecs::World world;
