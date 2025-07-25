@@ -167,6 +167,10 @@ class Archetype
     EntityIdx entity_count() const;
     bool contains(EntityId entity) const;
     void remove_entity(EntityId entity);
+    template <typename... Components, typename Predicate>
+    void remove_if(const std::array<ComponentTypeId, sizeof...(Components)>
+                       &component_type_ids,
+                   Predicate &&predicate);
     void clear();
 };
 
@@ -243,6 +247,37 @@ std::tuple<Components &...> Archetype::get_components(EntityId entity)
     assert(contains(entity) && "Entity not in Archetype");
     const size_t index = idx_of(entity);
     return std::tuple<Components &...>(get_component<Components>(index)...);
+}
+
+template <typename... Components, typename Predicate>
+void Archetype::remove_if(
+    const std::array<ComponentTypeId, sizeof...(Components)>
+        &component_type_ids,
+    Predicate &&predicate)
+{
+    const auto initial_entity_count = entity_count();
+    if (initial_entity_count == 0) {
+        return;
+    }
+
+    auto component_arrays = data_arrays<Components...>(component_type_ids);
+    std::vector<EntityId> entities_to_remove;
+    for (std::size_t i = 0; i < initial_entity_count; i++) {
+        const EntityId entity = idx_to_entity[i];
+        // Call predicate with entity and all component references
+        const bool should_be_removed =
+            [&]<size_t... I>(std::index_sequence<I...>) {
+                return predicate(entity, std::get<I>(component_arrays)[i]...);
+            }(std::index_sequence_for<Components...>{});
+
+        if (should_be_removed) {
+            entities_to_remove.push_back(entity);
+        }
+    }
+
+    for (auto entity : entities_to_remove) {
+        remove_entity(entity);
+    }
 }
 
 } // namespace detail
@@ -365,6 +400,16 @@ void Query<QueryComponents...>::clear(World &world)
 {
     for_each_matching_archetype(world,
                                 [](auto &archetype) { archetype.clear(); });
+}
+
+template <typename... QueryComponents>
+template <typename Predicate>
+void Query<QueryComponents...>::remove_if(World &world, Predicate &&predicate)
+{
+    for_each_matching_archetype(world, [this, &predicate](auto &archetype) {
+        archetype.template remove_if<QueryComponents...>(component_type_ids,
+                                                         predicate);
+    });
 }
 
 template <typename... QueryComponents>

@@ -136,6 +136,11 @@ template <typename... QueryComponents> class Query
 
     /// @brief Clear all entities that match the query
     void clear(World &world);
+    
+    /// @brief Remove entities matching predicate from all matching archetypes
+    template <typename Predicate>
+    void remove_if(World &world, Predicate &&predicate);
+    
     [[nodiscard]] size_t size(const World &world) const;
 
   private:

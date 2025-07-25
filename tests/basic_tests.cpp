@@ -441,24 +441,25 @@ TEST_CASE("Entity removal operations", "[ecs][entity]")
     SECTION("Remove entity with no components")
     {
         auto entity = world.create_entity();
-        
+
         // Remove the entity (should succeed even with no components)
         bool removed = world.remove_entity(entity);
         REQUIRE(removed == true);
-        
+
         // Entity should no longer exist
-        // Note: has_components will likely crash or return false for non-existent entity
-        // This is expected behavior for invalid entity access
+        // Note: has_components will likely crash or return false for
+        // non-existent entity This is expected behavior for invalid entity
+        // access
     }
 
     SECTION("Remove entity with single component")
     {
         auto entity = world.create_entity();
         world.add_components(entity, Position{1.0F, 2.0F, 3.0F});
-        
+
         // Verify entity has components
         REQUIRE(world.has_components<Position>(entity));
-        
+
         // Remove the entity
         bool removed = world.remove_entity(entity);
         REQUIRE(removed == true);
@@ -467,17 +468,15 @@ TEST_CASE("Entity removal operations", "[ecs][entity]")
     SECTION("Remove entity with multiple components")
     {
         auto entity = world.create_entity();
-        world.add_components(entity, 
-            Position{1.0F, 2.0F, 3.0F},
-            Velocity{4.0F, 5.0F, 6.0F},
-            Health{100.0F, 100.0F}
-        );
-        
+        world.add_components(entity, Position{1.0F, 2.0F, 3.0F},
+                             Velocity{4.0F, 5.0F, 6.0F},
+                             Health{100.0F, 100.0F});
+
         // Verify entity has all components
         REQUIRE(world.has_components<Position>(entity));
         REQUIRE(world.has_components<Velocity>(entity));
         REQUIRE(world.has_components<Health>(entity));
-        
+
         // Remove the entity
         bool removed = world.remove_entity(entity);
         REQUIRE(removed == true);
@@ -495,11 +494,11 @@ TEST_CASE("Entity removal operations", "[ecs][entity]")
     {
         auto entity = world.create_entity();
         world.add_components(entity, Position{1.0F, 2.0F, 3.0F});
-        
+
         // First removal should succeed
         bool first_removal = world.remove_entity(entity);
         REQUIRE(first_removal == true);
-        
+
         // Second removal should fail
         bool second_removal = world.remove_entity(entity);
         REQUIRE(second_removal == false);
@@ -511,26 +510,22 @@ TEST_CASE("Entity removal operations", "[ecs][entity]")
         auto e1 = world.create_entity();
         auto e2 = world.create_entity();
         auto e3 = world.create_entity();
-        
+
         world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
         world.add_components(e2, Position{2.0F, 0.0F, 0.0F});
         world.add_components(e3, Position{3.0F, 0.0F, 0.0F});
-        
+
         // Initially should have 3 entities with Position
         int count_before = 0;
-        ecs::Query<Position>().each(world, [&](Position&) {
-            count_before++;
-        });
+        ecs::Query<Position>().each(world, [&](Position &) { count_before++; });
         REQUIRE(count_before == 3);
-        
+
         // Remove one entity
         world.remove_entity(e2);
-        
+
         // Should now have 2 entities with Position
         int count_after = 0;
-        ecs::Query<Position>().each(world, [&](Position&) {
-            count_after++;
-        });
+        ecs::Query<Position>().each(world, [&](Position &) { count_after++; });
         REQUIRE(count_after == 2);
     }
 
@@ -539,32 +534,37 @@ TEST_CASE("Entity removal operations", "[ecs][entity]")
         // Create entities in different archetypes
         auto e1 = world.create_entity(); // Position only
         world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
-        
+
         auto e2 = world.create_entity(); // Position + Velocity
-        world.add_components(e2, Position{2.0F, 0.0F, 0.0F}, Velocity{1.0F, 0.0F, 0.0F});
-        
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F},
+                             Velocity{1.0F, 0.0F, 0.0F});
+
         auto e3 = world.create_entity(); // All three components
-        world.add_components(e3, Position{3.0F, 0.0F, 0.0F}, Velocity{2.0F, 0.0F, 0.0F}, Health{100.0F, 100.0F});
-        
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F},
+                             Velocity{2.0F, 0.0F, 0.0F},
+                             Health{100.0F, 100.0F});
+
         // Verify initial counts
         int pos_count = 0, vel_count = 0, health_count = 0;
-        ecs::Query<Position>().each(world, [&](Position&) { pos_count++; });
-        ecs::Query<Velocity>().each(world, [&](Velocity&) { vel_count++; });
-        ecs::Query<Health>().each(world, [&](Health&) { health_count++; });
-        
+        ecs::Query<Position>().each(world, [&](Position &) { pos_count++; });
+        ecs::Query<Velocity>().each(world, [&](Velocity &) { vel_count++; });
+        ecs::Query<Health>().each(world, [&](Health &) { health_count++; });
+
         REQUIRE(pos_count == 3);
         REQUIRE(vel_count == 2);
         REQUIRE(health_count == 1);
-        
+
         // Remove entity from middle archetype
         world.remove_entity(e2);
-        
+
         // Verify counts after removal
-        pos_count = 0; vel_count = 0; health_count = 0;
-        ecs::Query<Position>().each(world, [&](Position&) { pos_count++; });
-        ecs::Query<Velocity>().each(world, [&](Velocity&) { vel_count++; });
-        ecs::Query<Health>().each(world, [&](Health&) { health_count++; });
-        
+        pos_count = 0;
+        vel_count = 0;
+        health_count = 0;
+        ecs::Query<Position>().each(world, [&](Position &) { pos_count++; });
+        ecs::Query<Velocity>().each(world, [&](Velocity &) { vel_count++; });
+        ecs::Query<Health>().each(world, [&](Health &) { health_count++; });
+
         REQUIRE(pos_count == 2);
         REQUIRE(vel_count == 1);
         REQUIRE(health_count == 1);
@@ -576,25 +576,257 @@ TEST_CASE("Entity removal operations", "[ecs][entity]")
         auto e1 = world.create_entity();
         auto e2 = world.create_entity();
         auto e3 = world.create_entity();
-        
+
         world.add_components(e1, Position{10.0F, 20.0F, 30.0F});
         world.add_components(e2, Position{40.0F, 50.0F, 60.0F});
         world.add_components(e3, Position{70.0F, 80.0F, 90.0F});
-        
+
         // Remove middle entity
         world.remove_entity(e2);
-        
+
         // Verify remaining entities have correct data
-        auto& pos1 = world.get_component<Position>(e1);
-        auto& pos3 = world.get_component<Position>(e3);
-        
+        auto &pos1 = world.get_component<Position>(e1);
+        auto &pos3 = world.get_component<Position>(e3);
+
         REQUIRE(pos1.x == 10.0F);
         REQUIRE(pos1.y == 20.0F);
         REQUIRE(pos1.z == 30.0F);
-        
+
         REQUIRE(pos3.x == 70.0F);
         REQUIRE(pos3.y == 80.0F);
         REQUIRE(pos3.z == 90.0F);
+    }
+}
+
+TEST_CASE("Query remove_if operations", "[ecs][query][remove_if]")
+{
+    ecs::World world;
+    ecs::register_component<Position>();
+    ecs::register_component<Velocity>();
+    ecs::register_component<Health>();
+
+    SECTION("Remove entities based on single component predicate")
+    {
+        // Create test entities
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+        auto e4 = world.create_entity();
+
+        world.add_components(e1, Position{-5.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{10.0F, 0.0F, 0.0F});
+        world.add_components(e3, Position{-2.0F, 0.0F, 0.0F});
+        world.add_components(e4, Position{8.0F, 0.0F, 0.0F});
+
+        // Initially should have 4 entities
+        REQUIRE(ecs::Query<Position>().size(world) == 4);
+
+        // Remove entities with negative x position
+        ecs::Query<Position>().remove_if(
+            world, [](ecs::EntityId, Position &pos) { return pos.x < 0.0F; });
+
+        // Should have 2 entities remaining
+        REQUIRE(ecs::Query<Position>().size(world) == 2);
+
+        // Verify remaining entities have positive x
+        ecs::Query<Position>().each(
+            world, [](Position &pos) { REQUIRE(pos.x > 0.0F); });
+    }
+
+    SECTION("Remove entities based on multiple component predicate")
+    {
+        // Create entities with different component combinations
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+        auto e4 = world.create_entity();
+
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F},
+                             Velocity{5.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F},
+                             Velocity{15.0F, 0.0F, 0.0F});
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F},
+                             Velocity{8.0F, 0.0F, 0.0F});
+        world.add_components(e4, Position{4.0F, 0.0F, 0.0F},
+                             Velocity{25.0F, 0.0F, 0.0F});
+
+        // Initially should have 4 entities with both components
+        REQUIRE(ecs::Query<Position, Velocity>().size(world) == 4);
+
+        // Remove entities with high velocity (> 10)
+        ecs::Query<Position, Velocity>().remove_if(
+            world, [](ecs::EntityId, Position &, Velocity &vel) {
+                return vel.vx > 10.0F;
+            });
+
+        // Should have 2 entities remaining
+        REQUIRE(ecs::Query<Position, Velocity>().size(world) == 2);
+
+        // Verify remaining entities have velocity <= 10
+        ecs::Query<Position, Velocity>().each(
+            world, [](Position &, Velocity &vel) { REQUIRE(vel.vx <= 10.0F); });
+    }
+
+    SECTION("Remove entities using EntityId in predicate")
+    {
+        // Create entities and store their IDs
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F});
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F});
+
+        // Remove specific entity by ID
+        ecs::Query<Position>().remove_if(
+            world,
+            [e2](ecs::EntityId entity, Position &) { return entity == e2; });
+
+        // Should have 2 entities remaining
+        REQUIRE(ecs::Query<Position>().size(world) == 2);
+
+        // Verify e2 is gone, e1 and e3 remain
+        bool found_e1 = false, found_e3 = false;
+        ecs::Query<Position>().each(
+            world, [&](Position &, ecs::EntityId entity) {
+                if (entity == e1)
+                    found_e1 = true;
+                if (entity == e3)
+                    found_e3 = true;
+                REQUIRE(entity != e2); // e2 should be removed
+            });
+        REQUIRE(found_e1);
+        REQUIRE(found_e3);
+    }
+
+    SECTION("Remove all entities matching query")
+    {
+        // Create entities in different archetypes
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F},
+                             Velocity{1.0F, 0.0F, 0.0F});
+        world.add_components(e3, Health{100.0F, 100.0F}); // Different archetype
+
+        // Remove all entities with Position component
+        ecs::Query<Position>().remove_if(world, [](ecs::EntityId, Position &) {
+            return true; // Remove all
+        });
+
+        // Should have 0 entities with Position
+        REQUIRE(ecs::Query<Position>().size(world) == 0);
+
+        // Entity with only Health should remain
+        REQUIRE(ecs::Query<Health>().size(world) == 1);
+    }
+
+    SECTION("Remove no entities when predicate is false")
+    {
+        // Create test entities
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F});
+
+        size_t initial_count = ecs::Query<Position>().size(world);
+
+        // Remove nothing (predicate always false)
+        ecs::Query<Position>().remove_if(world, [](ecs::EntityId, Position &) {
+            return false; // Remove none
+        });
+
+        // Count should be unchanged
+        REQUIRE(ecs::Query<Position>().size(world) == initial_count);
+    }
+
+    SECTION("Remove from empty query")
+    {
+        // Don't create any entities
+
+        // Should not crash when removing from empty query
+        ecs::Query<Position>().remove_if(
+            world, [](ecs::EntityId, Position &) { return true; });
+
+        REQUIRE(ecs::Query<Position>().size(world) == 0);
+    }
+
+    SECTION("Remove entities across multiple archetypes")
+    {
+        // Create entities in different archetypes
+        auto e1 = world.create_entity(); // Position only
+        auto e2 = world.create_entity(); // Position + Velocity
+        auto e3 = world.create_entity(); // Position + Health
+        auto e4 = world.create_entity(); // Position + Velocity + Health
+
+        world.add_components(e1, Position{1.0F, 0.0F, 0.0F});
+        world.add_components(e2, Position{2.0F, 0.0F, 0.0F},
+                             Velocity{1.0F, 0.0F, 0.0F});
+        world.add_components(e3, Position{3.0F, 0.0F, 0.0F},
+                             Health{100.0F, 100.0F});
+        world.add_components(e4, Position{4.0F, 0.0F, 0.0F},
+                             Velocity{1.0F, 0.0F, 0.0F},
+                             Health{100.0F, 100.0F});
+
+        // Initially should have 4 entities with Position
+        REQUIRE(ecs::Query<Position>().size(world) == 4);
+
+        // Remove entities with even x position
+        ecs::Query<Position>().remove_if(
+            world, [](ecs::EntityId, Position &pos) {
+                return static_cast<int>(pos.x) % 2 == 0;
+            });
+
+        // Should have 2 entities remaining (x=1 and x=3)
+        REQUIRE(ecs::Query<Position>().size(world) == 2);
+
+        // Verify remaining entities have odd x position
+        ecs::Query<Position>().each(world, [](Position &pos) {
+            REQUIRE(static_cast<int>(pos.x) % 2 == 1);
+        });
+    }
+
+    SECTION("Remove non-trivial components properly")
+    {
+        ecs::register_component<NonTrivialComponent>();
+
+        // Create entities with non-trivial components
+        auto e1 = world.create_entity();
+        auto e2 = world.create_entity();
+        auto e3 = world.create_entity();
+        auto e4 = world.create_entity();
+
+        world.add_components(e1, NonTrivialComponent{"keep1"});
+        world.add_components(e2, NonTrivialComponent{"remove"});
+        world.add_components(e3, NonTrivialComponent{"keep2"});
+        world.add_components(e4, NonTrivialComponent{"remove2"});
+
+        // Initially should have 4 entities
+        REQUIRE(ecs::Query<NonTrivialComponent>().size(world) == 4);
+
+        // Remove entities with names starting with "remove"
+        ecs::Query<NonTrivialComponent>().remove_if(
+            world, [](ecs::EntityId, NonTrivialComponent &comp) {
+                return comp.name.find("remove") == 0;
+            });
+
+        // Should have 2 entities remaining
+        REQUIRE(ecs::Query<NonTrivialComponent>().size(world) == 2);
+
+        // Verify remaining entities have correct names and move semantics were
+        // preserved
+        ecs::Query<NonTrivialComponent>().each(
+            world, [](NonTrivialComponent &comp) {
+                REQUIRE(comp.name.find("keep") == 0);
+                // The move counters should reflect proper move semantics during
+                // swapping
+                REQUIRE(comp.move_counter >=
+                        1); // At least one move from initial construction
+            });
     }
 }
 
