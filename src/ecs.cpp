@@ -214,6 +214,29 @@ Archetype::Archetype(const ComponentMask &mask) : mask_(mask)
     }
 }
 
+Archetype::Archetype(const Archetype &other) 
+    : idx_to_entity(other.idx_to_entity),
+      entities_to_idx(other.entities_to_idx),
+      mask_(other.mask_), 
+      components(other.components)
+{
+}
+
+Archetype &Archetype::operator=(const Archetype &other)
+{
+    assert(mask_ == other.mask_ && "Cannot assign archetypes with different component masks");
+    
+    if (this == &other) {
+        return *this; // Self-assignment check
+    }
+    
+    idx_to_entity = other.idx_to_entity;
+    entities_to_idx = other.entities_to_idx;
+    components = other.components; // This will call ComponentArray assignment operators
+    
+    return *this;
+}
+
 bool Archetype::operator==(const Archetype &other) const
 {
     return mask_ == other.mask_;

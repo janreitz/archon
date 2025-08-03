@@ -130,8 +130,8 @@ class Archetype
     std::unordered_map<ComponentTypeId, ComponentArray> components;
 
     explicit Archetype(const ComponentMask &mask);
-    Archetype(const Archetype &other) = delete;
-    Archetype &operator=(const Archetype &other) = delete;
+    Archetype(const Archetype &other);
+    Archetype &operator=(const Archetype &other);
     Archetype(Archetype &&other) noexcept = delete;
     Archetype &operator=(Archetype &&other) noexcept = delete;
     ~Archetype();
