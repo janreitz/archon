@@ -258,6 +258,13 @@ class World
     template <typename... T> friend class Query;
 
   public:
+    World() = default;
+    World(const World &other);
+    World &operator=(const World &other);
+    World(World &&other) = delete; // TODO think about move semantics
+    World &operator=(World &&other) = delete;
+    ~World() = default;
+
     EntityId create_entity();
     bool remove_entity(EntityId entity);
 

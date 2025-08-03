@@ -317,6 +317,49 @@ void Archetype::clear()
 namespace ecs
 {
 
+World::World(const World &other)
+    : component_mask_to_archetypes_(other.component_mask_to_archetypes_),
+      next_entity_id_(other.next_entity_id_)
+{
+    // Rebuild entity_to_archetype_ map with references to the NEW archetypes
+    for (const auto &[entity_id, old_archetype_ref] :
+         other.entity_to_archetype_) {
+        const detail::ComponentMask &mask = old_archetype_ref.get().mask_;
+        // Find the corresponding NEW archetype in our copied map
+        auto it = component_mask_to_archetypes_.find(mask);
+        assert(it != component_mask_to_archetypes_.end() &&
+               "Archetype should exist in copied map");
+        // Create reference to the NEW archetype
+        entity_to_archetype_.emplace(entity_id, std::ref(it->second));
+    }
+}
+
+World &World::operator=(const World &other)
+{
+    if (this == &other) {
+        return *this; // Self-assignment check
+    }
+
+    // Copy archetype map and next_entity_id
+    component_mask_to_archetypes_ = other.component_mask_to_archetypes_;
+    next_entity_id_ = other.next_entity_id_;
+
+    // Clear and rebuild entity_to_archetype_ map
+    entity_to_archetype_.clear();
+    for (const auto &[entity_id, old_archetype_ref] :
+         other.entity_to_archetype_) {
+        const detail::ComponentMask &mask = old_archetype_ref.get().mask_;
+        // Find the corresponding NEW archetype in our copied map
+        auto it = component_mask_to_archetypes_.find(mask);
+        assert(it != component_mask_to_archetypes_.end() &&
+               "Archetype should exist in copied map");
+        // Create reference to the NEW archetype
+        entity_to_archetype_.emplace(entity_id, std::ref(it->second));
+    }
+
+    return *this;
+}
+
 EntityId World::create_entity()
 {
     const EntityId new_entity = next_entity_id_++;
