@@ -58,6 +58,7 @@ struct ComponentTypeInfo {
     CopyConstructorFn copy_constructor;
     MoveConstructorFn move_constructor;
 
+    std::type_index type_idx;
     size_t component_size;
     std::string_view type_name;
     bool is_trivially_copyable;
@@ -70,6 +71,8 @@ class ComponentArray
   public:
     template <typename T> static ComponentArray create();
 
+    ComponentArray(const ComponentArray &other);
+    ComponentArray &operator=(const ComponentArray &other);
     ~ComponentArray();
 
     [[nodiscard]] size_t size() const;
@@ -83,13 +86,18 @@ class ComponentArray
     void *get_ptr(size_t index);
     template <typename T> T *data()
     {
+        version_++;
         return reinterpret_cast<T *>(data_.data());
     }
     template <typename T> const T *data() const
     {
         return reinterpret_cast<const T *>(data_.data());
     }
-    template <typename T> T &get(size_t index) { return data<T>()[index]; }
+    template <typename T> T &get(size_t index)
+    {
+        version_++;
+        return data<T>()[index];
+    }
     template <typename T> const T &get(size_t index) const
     {
         return data<T>()[index];
@@ -99,11 +107,14 @@ class ComponentArray
     ComponentArray(const ComponentTypeInfo &meta);
 
     void maybe_grow(size_t required_size);
+    void copy_elements(uint8_t *dst, const uint8_t *src);
     void destroy_elements();
 
     size_t element_count_ = 0;
     ComponentTypeInfo meta_;
     std::vector<uint8_t> data_;
+
+    size_t version_ = 0;
 };
 
 class Archetype
@@ -222,11 +233,11 @@ template <typename... QueryComponents> class Query
 
     /// @brief Clear all entities that match the query
     void clear(World &world);
-    
+
     /// @brief Remove entities matching predicate from all matching archetypes
     template <typename Predicate>
     void remove_if(World &world, Predicate &&predicate);
-    
+
     [[nodiscard]] size_t size(const World &world) const;
 
   private:

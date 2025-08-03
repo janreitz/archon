@@ -53,6 +53,7 @@ template <typename T> void ComponentRegistry::register_component()
             [](void *dst, void *src) {
                 new (dst) T(std::move(*static_cast<T *>(src)));
             },
+        .type_idx = type_idx,
         .component_size = sizeof(T),
         .type_name = typeid(T).name(),
         .is_trivially_copyable = std::is_trivially_copyable_v<T>,
@@ -86,8 +87,6 @@ template <typename T> ComponentArray ComponentArray::create()
         ComponentRegistry::instance().get_component_type_info(meta_id);
     return ComponentArray(meta);
 }
-
-
 
 inline Archetype::~Archetype() { clear(); }
 

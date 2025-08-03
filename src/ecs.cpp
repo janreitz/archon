@@ -16,6 +16,38 @@ namespace ecs::detail
 
 ComponentArray::ComponentArray(const ComponentTypeInfo &meta) : meta_(meta) {}
 
+ComponentArray::ComponentArray(const ComponentArray &other)
+    : element_count_(other.element_count_), meta_(other.meta_),
+      data_(other.data_.size()), version_(other.version_)
+{
+    copy_elements(data_.data(), other.data_.data());
+}
+
+ComponentArray &ComponentArray::operator=(const ComponentArray &other)
+{
+    assert(meta_.type_idx == other.meta_.type_idx &&
+           "Asignment should only happen for ComponentArrays storing the same "
+           "type");
+
+    if (this == &other) {
+        return *this; // Self-assignment check
+    }
+
+    if (version_ == other.version_) {
+        return *this;
+    }
+
+    clear();
+
+    meta_ = other.meta_;
+    version_ = other.version_;
+    element_count_ = other.element_count_;
+    data_.resize(other.data_.size());
+
+    copy_elements(data_.data(), other.data_.data());
+    return *this;
+}
+
 ComponentArray::~ComponentArray() { clear(); }
 
 void ComponentArray::push(void *src, bool ok_to_move)
@@ -32,6 +64,7 @@ void ComponentArray::push(void *src, bool ok_to_move)
         meta_.copy_constructor(dst, src);
     }
     element_count_++;
+    version_++;
 }
 
 void ComponentArray::push(const void *src)
@@ -46,6 +79,19 @@ void ComponentArray::push(const void *src)
         meta_.copy_constructor(dst, src);
     }
     element_count_++;
+    version_++;
+}
+
+void ComponentArray::copy_elements(uint8_t *dst, const uint8_t *src)
+{
+    if (meta_.is_trivially_copyable) {
+        std::memcpy(dst, src, element_count_ * meta_.component_size);
+    } else {
+        for (size_t i = 0; i < element_count_; i++) {
+            meta_.copy_constructor(dst + i * meta_.component_size,
+                                   src + i * meta_.component_size);
+        }
+    }
 }
 
 void ComponentArray::maybe_grow(size_t required_size)
@@ -89,6 +135,7 @@ void ComponentArray::clear()
     }
     element_count_ = 0;
     data_.clear();
+    version_ = 0;
 }
 
 size_t ComponentArray::size() const { return element_count_; }
@@ -125,10 +172,12 @@ void ComponentArray::remove(size_t idx)
         meta_.destructor(data_.data() + (last_idx * meta_.component_size));
     }
     element_count_--;
+    version_++;
 }
 
 void *ComponentArray::get_ptr(size_t index)
 {
+    version_++;
     return data_.data() + (index * meta_.component_size);
 }
 
@@ -254,7 +303,8 @@ EntityId World::create_entity()
     return new_entity;
 }
 
-bool World::remove_entity(EntityId entity) {
+bool World::remove_entity(EntityId entity)
+{
     auto kv_iter = entity_to_archetype_.find(entity);
     if (kv_iter == entity_to_archetype_.end()) {
         return false;
@@ -275,7 +325,8 @@ World::get_or_create_archetype(const detail::ComponentMask &mask)
     return iter->second;
 }
 
-size_t World::archetype_count() const {
+size_t World::archetype_count() const
+{
     return component_mask_to_archetypes_.size();
 }
 
