@@ -12,47 +12,6 @@ namespace ecs
 namespace detail
 {
 
-class ComponentArray
-{
-  public:
-    template <typename T> static ComponentArray create();
-
-    ~ComponentArray();
-
-    [[nodiscard]] size_t size() const;
-
-    // Chooses optimal transition strategy based on type traits.
-    void push(void *src, bool allow_move = false);
-    void push(const void *src);
-    void reserve(size_t size);
-    void clear();
-    void remove(size_t idx);
-    void *get_ptr(size_t index);
-    template <typename T> T *data()
-    {
-        return reinterpret_cast<T *>(data_.data());
-    }
-    template <typename T> const T *data() const
-    {
-        return reinterpret_cast<const T *>(data_.data());
-    }
-    template <typename T> T &get(size_t index) { return data<T>()[index]; }
-    template <typename T> const T &get(size_t index) const
-    {
-        return data<T>()[index];
-    }
-
-  private:
-    ComponentArray(const ComponentTypeInfo &meta);
-
-    void maybe_grow(size_t required_size);
-    void destroy_elements();
-
-    size_t element_count_ = 0;
-    ComponentTypeInfo meta_;
-    std::vector<uint8_t> data_;
-};
-
 class ComponentRegistry
 {
   public:
@@ -128,51 +87,7 @@ template <typename T> ComponentArray ComponentArray::create()
     return ComponentArray(meta);
 }
 
-class Archetype
-{
-  private:
-    std::vector<EntityId> idx_to_entity;
-    std::unordered_map<EntityId, size_t> entities_to_idx;
 
-    using EntityIdx = decltype(idx_to_entity)::size_type;
-
-  public:
-    const ComponentMask mask_;
-    std::unordered_map<ComponentTypeId, ComponentArray> components;
-
-    explicit Archetype(const ComponentMask &mask);
-    Archetype(const Archetype &other) = delete;
-    Archetype &operator=(const Archetype &other) = delete;
-    Archetype(Archetype &&other) noexcept = delete;
-    Archetype &operator=(Archetype &&other) noexcept = delete;
-    ~Archetype();
-
-    bool operator==(const Archetype &other) const;
-
-    template <typename T> T *data();
-    template <typename T> const T *data() const;
-    template <typename... Components>
-    std::tuple<Components *...>
-    data_arrays(const std::array<ComponentTypeId, sizeof...(Components)> &ids);
-    template <typename... Components>
-    std::tuple<const Components *...> data_arrays(
-        const std::array<ComponentTypeId, sizeof...(Components)> &ids) const;
-    template <typename T> T &get_component(size_t index);
-    template <typename T> T &get_component(EntityId entity);
-    template <typename... Components>
-    std::tuple<Components &...> get_components(EntityId entity);
-    EntityIdx add_entity(EntityId entity);
-    EntityId get_entity(EntityIdx idx) const;
-    EntityIdx idx_of(EntityId entity) const;
-    EntityIdx entity_count() const;
-    bool contains(EntityId entity) const;
-    void remove_entity(EntityId entity);
-    template <typename... Components, typename Predicate>
-    void remove_if(const std::array<ComponentTypeId, sizeof...(Components)>
-                       &component_type_ids,
-                   Predicate &&predicate);
-    void clear();
-};
 
 inline Archetype::~Archetype() { clear(); }
 
