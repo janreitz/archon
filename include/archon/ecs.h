@@ -18,7 +18,12 @@ using EntityId = uint32_t;
 constexpr size_t MAX_COMPONENTS = 32; // TODO find a way for the user to set
                                       // this
 
-template <typename T> void register_component();
+template <typename T>
+concept Component = (std::is_copy_constructible_v<T> ||
+                     std::is_nothrow_move_constructible_v<T>) &&
+                    std::is_destructible_v<T>;
+
+template <Component T> void register_component();
 
 namespace detail
 {
@@ -68,7 +73,7 @@ struct ComponentTypeInfo {
 class ComponentArray
 {
   public:
-    template <typename T> static ComponentArray create();
+    template <Component T> static ComponentArray create();
 
     ~ComponentArray();
 
@@ -81,16 +86,16 @@ class ComponentArray
     void clear();
     void remove(size_t idx);
     void *get_ptr(size_t index);
-    template <typename T> T *data()
+    template <Component T> T *data()
     {
         return reinterpret_cast<T *>(data_.data());
     }
-    template <typename T> const T *data() const
+    template <Component T> const T *data() const
     {
         return reinterpret_cast<const T *>(data_.data());
     }
-    template <typename T> T &get(size_t index) { return data<T>()[index]; }
-    template <typename T> const T &get(size_t index) const
+    template <Component T> T &get(size_t index) { return data<T>()[index]; }
+    template <Component T> const T &get(size_t index) const
     {
         return data<T>()[index];
     }
@@ -127,17 +132,17 @@ class Archetype
 
     bool operator==(const Archetype &other) const;
 
-    template <typename T> T *data();
-    template <typename T> const T *data() const;
-    template <typename... Components>
+    template <Component T> T *data();
+    template <Component T> const T *data() const;
+    template <Component... Components>
     std::tuple<Components *...>
     data_arrays(const std::array<ComponentTypeId, sizeof...(Components)> &ids);
-    template <typename... Components>
+    template <Component... Components>
     std::tuple<const Components *...> data_arrays(
         const std::array<ComponentTypeId, sizeof...(Components)> &ids) const;
-    template <typename T> T &get_component(size_t index);
-    template <typename T> T &get_component(EntityId entity);
-    template <typename... Components>
+    template <Component T> T &get_component(size_t index);
+    template <Component T> T &get_component(EntityId entity);
+    template <Component... Components>
     std::tuple<Components &...> get_components(EntityId entity);
     EntityIdx add_entity(EntityId entity);
     EntityId get_entity(EntityIdx idx) const;
@@ -145,7 +150,7 @@ class Archetype
     EntityIdx entity_count() const;
     bool contains(EntityId entity) const;
     void remove_entity(EntityId entity);
-    template <typename... Components, typename Predicate>
+    template <Component... Components, typename Predicate>
     void remove_if(const std::array<ComponentTypeId, sizeof...(Components)>
                        &component_type_ids,
                    Predicate &&predicate);
@@ -172,7 +177,7 @@ struct function_traits
 template <typename T> struct has_extra_param : std::false_type {
 };
 
-template <typename Func, typename... ValueComps>
+template <typename Func, Component... ValueComps>
 struct has_extra_param<std::tuple<Func, ValueComps...>>
     : std::bool_constant<function_traits<Func>::argument_count ==
                          (sizeof...(ValueComps) + 1)> {
@@ -204,14 +209,14 @@ concept ArgsConstCompatible =
     }(static_cast<typename detail::function_traits<Func>::argument_types *>(
         nullptr));
 
-template <typename... QueryComponents> class Query
+template <Component... QueryComponents> class Query
 {
   public:
     Query();
 
-    template <typename... WithComponents> Query &with();
+    template <Component... WithComponents> Query &with();
 
-    template <typename... ExcludeComponents> Query &without();
+    template <Component... ExcludeComponents> Query &without();
 
     template <WorldType WorldT, typename Func>
     requires ArgsConstCompatible<WorldT, Func>
@@ -222,11 +227,11 @@ template <typename... QueryComponents> class Query
 
     /// @brief Clear all entities that match the query
     void clear(World &world);
-    
+
     /// @brief Remove entities matching predicate from all matching archetypes
     template <typename Predicate>
     void remove_if(World &world, Predicate &&predicate);
-    
+
     [[nodiscard]] size_t size(const World &world) const;
 
   private:
@@ -244,27 +249,27 @@ template <typename... QueryComponents> class Query
 class World
 {
     // Make Query a friend so it can access archetypes
-    template <typename... T> friend class Query;
+    template <Component... T> friend class Query;
 
   public:
     EntityId create_entity();
     bool remove_entity(EntityId entity);
 
-    template <typename... Components>
+    template <Component... Components>
     void add_components(EntityId entity, Components &&...component);
 
-    template <typename... Components> void remove_components(EntityId entity);
+    template <Component... Components> void remove_components(EntityId entity);
 
-    template <typename Component> Component &get_component(EntityId entity);
-    template <typename Component>
+    template <Component Component> Component &get_component(EntityId entity);
+    template <Component Component>
     const Component &get_component(EntityId entity) const;
 
-    template <typename... Components>
+    template <Component... Components>
     std::tuple<Components &...> get_components(EntityId entity);
-    template <typename... Components>
+    template <Component... Components>
     std::tuple<const Components &...> get_components(EntityId entity) const;
 
-    template <typename... Components>
+    template <Component... Components>
     bool has_components(EntityId entity) const;
 
     size_t archetype_count() const;

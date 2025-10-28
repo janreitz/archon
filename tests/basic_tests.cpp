@@ -41,12 +41,40 @@ struct NonTrivialComponent {
     }
 };
 
+struct MoveOnlyComponent {
+    std::unique_ptr<int> data;
+    size_t move_counter = 0;
+
+    MoveOnlyComponent() : data(std::make_unique<int>(42)) {}
+    explicit MoveOnlyComponent(int value) : data(std::make_unique<int>(value))
+    {
+    }
+
+    // Move operations
+    MoveOnlyComponent(MoveOnlyComponent &&other) noexcept
+        : data(std::move(other.data)), move_counter(other.move_counter + 1)
+    {
+    }
+
+    MoveOnlyComponent &operator=(MoveOnlyComponent &&other) noexcept
+    {
+        data = std::move(other.data);
+        move_counter = other.move_counter + 1;
+        return *this;
+    }
+
+    // Delete copy operations
+    MoveOnlyComponent(const MoveOnlyComponent &) = delete;
+    MoveOnlyComponent &operator=(const MoveOnlyComponent &) = delete;
+};
+
 TEST_CASE("Basic entity and component operations", "[ecs]")
 {
     ecs::World world;
     ecs::register_component<Position>();
     ecs::register_component<Velocity>();
     ecs::register_component<Health>();
+    ecs::register_component<MoveOnlyComponent>();
 
     SECTION("Entity creation")
     {
@@ -67,6 +95,18 @@ TEST_CASE("Basic entity and component operations", "[ecs]")
         REQUIRE(pos.z == 3.0F);
     }
 
+    SECTION("Can add move-only component")
+    {
+        auto entity = world.create_entity();
+        MoveOnlyComponent comp(123);
+        world.add_components(entity, std::move(comp));
+
+        auto &retrieved = world.get_component<MoveOnlyComponent>(entity);
+        REQUIRE(retrieved.data != nullptr);
+        REQUIRE(*retrieved.data == 123);
+        REQUIRE(retrieved.move_counter > 0); // Verify it was moved
+    }
+
     SECTION("Multiple components")
     {
         auto entity = world.create_entity();
@@ -77,6 +117,18 @@ TEST_CASE("Basic entity and component operations", "[ecs]")
         REQUIRE(pos.x == 1.0F);
         REQUIRE(vel.vx == 4.0F);
     }
+
+    SECTION("Move-only component with other components")
+    {
+        auto entity = world.create_entity();
+        world.add_components(entity, MoveOnlyComponent(456),
+                             Position{1.0F, 2.0F, 3.0F});
+
+        auto [move_comp, pos] =
+            world.get_components<MoveOnlyComponent, Position>(entity);
+        REQUIRE(*move_comp.data == 456);
+        REQUIRE(pos.x == 1.0F);
+    }
 }
 
 TEST_CASE("Basic querying", "[ecs]")
@@ -84,6 +136,7 @@ TEST_CASE("Basic querying", "[ecs]")
     ecs::World world;
     ecs::register_component<Position>();
     ecs::register_component<Velocity>();
+    ecs::register_component<MoveOnlyComponent>();
 
     // Create some test entities
     auto e1 = world.create_entity();
@@ -125,6 +178,29 @@ TEST_CASE("Basic querying", "[ecs]")
             world,
             [&](Position & /*pos*/, ecs::EntityId /*entity*/) { count++; });
         REQUIRE(count == 3);
+    }
+
+    SECTION("Query with move-only component")
+    {
+        auto e1 = world.create_entity();
+        world.add_components(e1, MoveOnlyComponent(100),
+                             Position{1.0F, 0.0F, 0.0F});
+
+        auto e2 = world.create_entity();
+        world.add_components(e2, MoveOnlyComponent(200),
+                             Position{2.0F, 0.0F, 0.0F});
+
+        int count = 0;
+        int sum = 0;
+        ecs::Query<MoveOnlyComponent, Position>().each(
+            world, [&](MoveOnlyComponent &comp, Position &pos) {
+                REQUIRE(comp.data != nullptr);
+                sum += *comp.data + static_cast<int>(pos.y);
+                count++;
+            });
+
+        REQUIRE(count == 2);
+        REQUIRE(sum == 300);
     }
 }
 

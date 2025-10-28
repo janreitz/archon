@@ -16,8 +16,8 @@ class ComponentRegistry
 {
   public:
     static ComponentRegistry &instance();
-    template <typename T> void register_component();
-    template <typename T> ComponentTypeId get_component_type_id() const;
+    template <Component T> void register_component();
+    template <Component T> ComponentTypeId get_component_type_id() const;
     ComponentTypeId get_component_type_id(std::type_index type_idx) const;
     const ComponentTypeInfo &
     get_component_type_info(ComponentTypeId component_id) const;
@@ -28,7 +28,7 @@ class ComponentRegistry
     ComponentTypeId next_id = 0;
 };
 
-template <typename T> void ComponentRegistry::register_component()
+template <Component T> void ComponentRegistry::register_component()
 {
     const auto type_idx = std::type_index(typeid(std::decay_t<T>));
     if (component_ids.contains(type_idx)) {
@@ -46,9 +46,15 @@ template <typename T> void ComponentRegistry::register_component()
         .default_constructor = [](void *dst) { new (dst) T(); },
         .destructor = [](void *obj) { static_cast<T *>(obj)->~T(); },
         .copy_constructor =
-            [](void *dst, const void *src) {
-                new (dst) T(*static_cast<const T *>(src));
-            },
+            []() {
+                if constexpr (std::is_copy_constructible_v<T>) {
+                    return [](void *dst, const void *src) {
+                        new (dst) T(*static_cast<const T *>(src));
+                    };
+                } else {
+                    return nullptr;
+                }
+            }(),
         .move_constructor =
             [](void *dst, void *src) {
                 new (dst) T(std::move(*static_cast<T *>(src)));
@@ -63,13 +69,13 @@ template <typename T> void ComponentRegistry::register_component()
     meta_data.push_back(meta_array);
 }
 
-template <typename T>
+template <Component T>
 ComponentTypeId ComponentRegistry::get_component_type_id() const
 {
     return get_component_type_id(typeid(std::decay_t<T>));
 }
 
-template <typename... Components> ComponentMask get_component_mask()
+template <Component... Components> ComponentMask get_component_mask()
 {
     ComponentMask mask;
     (mask.set(
@@ -78,7 +84,7 @@ template <typename... Components> ComponentMask get_component_mask()
     return mask;
 }
 
-template <typename T> ComponentArray ComponentArray::create()
+template <Component T> ComponentArray ComponentArray::create()
 {
     const auto meta_id =
         ComponentRegistry::instance().get_component_type_id<T>();
@@ -87,11 +93,9 @@ template <typename T> ComponentArray ComponentArray::create()
     return ComponentArray(meta);
 }
 
-
-
 inline Archetype::~Archetype() { clear(); }
 
-template <typename T> T *Archetype::data()
+template <Component T> T *Archetype::data()
 {
     const ComponentTypeId id =
         ComponentRegistry::instance().get_component_type_id<T>();
@@ -102,7 +106,7 @@ template <typename T> T *Archetype::data()
     return components.at(id).data<T>();
 }
 
-template <typename T> const T *Archetype::data() const
+template <Component T> const T *Archetype::data() const
 {
     const ComponentTypeId id =
         ComponentRegistry::instance().get_component_type_id<T>();
@@ -113,7 +117,7 @@ template <typename T> const T *Archetype::data() const
     return components.at(id).data<T>();
 }
 
-template <typename... Components>
+template <Component... Components>
 std::tuple<Components *...> Archetype::data_arrays(
     const std::array<ComponentTypeId, sizeof...(Components)> &ids)
 {
@@ -125,7 +129,7 @@ std::tuple<Components *...> Archetype::data_arrays(
     }(std::index_sequence_for<Components...>{});
 }
 
-template <typename... Components>
+template <Component... Components>
 std::tuple<const Components *...> Archetype::data_arrays(
     const std::array<ComponentTypeId, sizeof...(Components)> &ids) const
 {
@@ -137,7 +141,7 @@ std::tuple<const Components *...> Archetype::data_arrays(
     }(std::index_sequence_for<Components...>{});
 }
 
-template <typename T> T &Archetype::get_component(size_t index)
+template <Component T> T &Archetype::get_component(size_t index)
 {
     assert(index < idx_to_entity.size() && "Out of bounds access");
 
@@ -150,13 +154,13 @@ template <typename T> T &Archetype::get_component(size_t index)
     return components.at(id).get<T>(index);
 }
 
-template <typename T> T &Archetype::get_component(EntityId entity)
+template <Component T> T &Archetype::get_component(EntityId entity)
 {
     assert(contains(entity) && "Entity not in Archetype");
     return get_component<T>(idx_of(entity));
 }
 
-template <typename... Components>
+template <Component... Components>
 std::tuple<Components &...> Archetype::get_components(EntityId entity)
 {
     assert(contains(entity) && "Entity not in Archetype");
@@ -164,7 +168,7 @@ std::tuple<Components &...> Archetype::get_components(EntityId entity)
     return std::tuple<Components &...>(get_component<Components>(index)...);
 }
 
-template <typename... Components, typename Predicate>
+template <Component... Components, typename Predicate>
 void Archetype::remove_if(
     const std::array<ComponentTypeId, sizeof...(Components)>
         &component_type_ids,
@@ -197,13 +201,13 @@ void Archetype::remove_if(
 
 } // namespace detail
 
-template <typename T> void register_component()
+template <Component T> void register_component()
 {
     detail::ComponentRegistry::instance().register_component<T>();
 }
 
 // Query implementation
-template <typename... QueryComponents> Query<QueryComponents...>::Query()
+template <Component... QueryComponents> Query<QueryComponents...>::Query()
 {
     size_t counter = 0;
     (
@@ -217,8 +221,8 @@ template <typename... QueryComponents> Query<QueryComponents...>::Query()
         ...);
 }
 
-template <typename... QueryComponents>
-template <typename... WithComponents>
+template <Component... QueryComponents>
+template <Component... WithComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::with()
 {
     (include_mask.set(detail::ComponentRegistry::instance()
@@ -227,8 +231,8 @@ Query<QueryComponents...> &Query<QueryComponents...>::with()
     return *this;
 }
 
-template <typename... QueryComponents>
-template <typename... ExcludeComponents>
+template <Component... QueryComponents>
+template <Component... ExcludeComponents>
 Query<QueryComponents...> &Query<QueryComponents...>::without()
 {
     (exclude_mask.set(detail::ComponentRegistry::instance()
@@ -237,7 +241,7 @@ Query<QueryComponents...> &Query<QueryComponents...>::without()
     return *this;
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 bool Query<QueryComponents...>::matches(detail::ComponentMask mask) const
 {
     const bool matches_all_included = (mask & include_mask) == include_mask;
@@ -245,7 +249,7 @@ bool Query<QueryComponents...>::matches(detail::ComponentMask mask) const
     return matches_all_included && matches_no_excluded;
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 template <WorldType WorldT, typename Func>
 void Query<QueryComponents...>::for_each_matching_archetype(WorldT &&world,
                                                             Func &&func) const
@@ -258,7 +262,7 @@ void Query<QueryComponents...>::for_each_matching_archetype(WorldT &&world,
     }
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 template <WorldType WorldT, typename Func>
 requires ArgsConstCompatible<WorldT, Func>
 void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
@@ -300,7 +304,7 @@ void Query<QueryComponents...>::each(WorldT &&world, Func &&func) const
         });
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 template <typename Func>
 void Query<QueryComponents...>::each_archetype(Func &&func, World &world) const
 {
@@ -310,14 +314,14 @@ void Query<QueryComponents...>::each_archetype(Func &&func, World &world) const
     });
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 void Query<QueryComponents...>::clear(World &world)
 {
     for_each_matching_archetype(world,
                                 [](auto &archetype) { archetype.clear(); });
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 template <typename Predicate>
 void Query<QueryComponents...>::remove_if(World &world, Predicate &&predicate)
 {
@@ -327,7 +331,7 @@ void Query<QueryComponents...>::remove_if(World &world, Predicate &&predicate)
     });
 }
 
-template <typename... QueryComponents>
+template <Component... QueryComponents>
 size_t Query<QueryComponents...>::size(const World &world) const
 {
 #ifdef TRACY_ENABLE
@@ -341,7 +345,7 @@ size_t Query<QueryComponents...>::size(const World &world) const
 }
 
 // World implementation
-template <typename... Components>
+template <Component... Components>
 void World::add_components(EntityId entity, Components &&...component)
 {
 #ifdef TRACY_ENABLE
@@ -392,7 +396,8 @@ void World::add_components(EntityId entity, Components &&...component)
     current_archetype.remove_entity(entity);
 }
 
-template <typename... Components> void World::remove_components(EntityId entity)
+template <Component... Components>
+void World::remove_components(EntityId entity)
 {
 #ifdef TRACY_ENABLE
     ZoneScoped;
@@ -433,7 +438,7 @@ template <typename... Components> void World::remove_components(EntityId entity)
     current_archetype.remove_entity(entity);
 }
 
-template <typename Component> Component &World::get_component(EntityId entity)
+template <Component Component> Component &World::get_component(EntityId entity)
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
     return entity_to_archetype_.at(entity)
@@ -441,7 +446,7 @@ template <typename Component> Component &World::get_component(EntityId entity)
         .template get_component<Component>(entity);
 }
 
-template <typename Component>
+template <Component Component>
 const Component &World::get_component(EntityId entity) const
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
@@ -450,7 +455,7 @@ const Component &World::get_component(EntityId entity) const
         .template get_component<Component>(entity);
 }
 
-template <typename... Components>
+template <Component... Components>
 std::tuple<Components &...> World::get_components(EntityId entity)
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
@@ -459,7 +464,7 @@ std::tuple<Components &...> World::get_components(EntityId entity)
         .template get_components<Components...>(entity);
 }
 
-template <typename... Components>
+template <Component... Components>
 std::tuple<const Components &...> World::get_components(EntityId entity) const
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
@@ -468,7 +473,7 @@ std::tuple<const Components &...> World::get_components(EntityId entity) const
         .template get_components<Components...>(entity);
 }
 
-template <typename... Components>
+template <Component... Components>
 bool World::has_components(EntityId entity) const
 {
     assert(entity_to_archetype_.contains(entity) && "Entity does not exist");
