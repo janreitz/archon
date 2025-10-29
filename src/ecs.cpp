@@ -237,7 +237,9 @@ void Archetype::clear()
 {
     idx_to_entity.clear();
     entities_to_idx.clear();
-    components.clear();
+    for (auto &[_, component_array] : components) {
+        component_array.clear();
+    }
 }
 
 } // namespace ecs::detail
