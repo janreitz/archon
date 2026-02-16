@@ -1,10 +1,15 @@
 #pragma once
 
+#include <array>
+#include <bit>
 #include <bitset>
 #include <cstdint>
 #include <cstring> // std::memcpy
+#include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -24,6 +29,11 @@ concept Component = (std::is_copy_constructible_v<T> ||
                     std::is_destructible_v<T>;
 
 template <Component T> void register_component();
+
+template <Component T>
+void register_serializer(std::string_view name,
+                         std::function<std::string(const T &)> to_fn,
+                         std::function<T(std::string_view)> from_fn);
 
 namespace detail
 {
@@ -68,6 +78,11 @@ struct ComponentTypeInfo {
     bool is_trivially_copyable;
     bool is_nothrow_move_constructible;
     bool is_trivially_destructible;
+
+    // Serialization (optional - null if not registered via register_serializer)
+    std::function<std::string(const void *)> serialize;
+    std::function<void(void *, std::string_view)> deserialize;
+    std::string display_name; // human-readable key used in save files
 };
 
 class ComponentArray
@@ -86,6 +101,7 @@ class ComponentArray
     void clear();
     void remove(size_t idx);
     void *get_ptr(size_t index);
+    const void *get_ptr(size_t index) const;
     template <Component T> T *data()
     {
         return reinterpret_cast<T *>(data_.data());
@@ -274,9 +290,14 @@ class World
 
     size_t archetype_count() const;
 
+    void save(const std::filesystem::path &path) const;
+    void load(const std::filesystem::path &path);
+
   private:
     detail::Archetype &
     get_or_create_archetype(const detail::ComponentMask &mask);
+
+    void add_entity_to_archetype(EntityId id, detail::Archetype &archetype);
 
     std::unordered_map<detail::ComponentMask, detail::Archetype>
         component_mask_to_archetypes_;

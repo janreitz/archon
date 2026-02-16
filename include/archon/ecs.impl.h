@@ -22,6 +22,14 @@ class ComponentRegistry
     const ComponentTypeInfo &
     get_component_type_info(ComponentTypeId component_id) const;
 
+    template <Component T>
+    void register_serializer(std::string_view name,
+                             std::function<std::string(const T &)> to_fn,
+                             std::function<T(std::string_view)> from_fn);
+
+    std::optional<ComponentTypeId>
+    find_by_display_name(std::string_view name) const;
+
   private:
     std::vector<ComponentTypeInfo> meta_data;
     std::unordered_map<std::type_index, ComponentTypeId> component_ids;
@@ -64,7 +72,10 @@ template <Component T> void ComponentRegistry::register_component()
         .is_trivially_copyable = std::is_trivially_copyable_v<T>,
         .is_nothrow_move_constructible =
             std::is_nothrow_move_constructible_v<T>,
-        .is_trivially_destructible = std::is_trivially_destructible_v<T>};
+        .is_trivially_destructible = std::is_trivially_destructible_v<T>,
+        .serialize                 = {},
+        .deserialize               = {},
+        .display_name              = {}};
 
     meta_data.push_back(meta_array);
 }
@@ -199,11 +210,36 @@ void Archetype::remove_if(
     }
 }
 
+template <Component T>
+void ComponentRegistry::register_serializer(
+    std::string_view name, std::function<std::string(const T &)> to_fn,
+    std::function<T(std::string_view)> from_fn)
+{
+    register_component<T>(); // idempotent - ensures T is in registry
+    const ComponentTypeId id = get_component_type_id<T>();
+    meta_data[id].display_name = std::string(name);
+    meta_data[id].serialize    = [to_fn](const void *p) {
+        return to_fn(*static_cast<const T *>(p));
+    };
+    meta_data[id].deserialize = [from_fn](void *dst, std::string_view s) {
+        new (dst) T(from_fn(s));
+    };
+}
+
 } // namespace detail
 
 template <Component T> void register_component()
 {
     detail::ComponentRegistry::instance().register_component<T>();
+}
+
+template <Component T>
+void register_serializer(std::string_view name,
+                         std::function<std::string(const T &)> to_fn,
+                         std::function<T(std::string_view)> from_fn)
+{
+    detail::ComponentRegistry::instance().register_serializer<T>(
+        name, std::move(to_fn), std::move(from_fn));
 }
 
 // Query implementation

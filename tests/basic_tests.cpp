@@ -1,5 +1,6 @@
 #include <archon/ecs.h>
 #include <catch2/catch_test_macros.hpp>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <utility>
@@ -944,5 +945,112 @@ TEST_CASE("Edge cases and error conditions", "[ecs][archetype]")
         // Verify components are properly aligned and accessible
         REQUIRE(world.get_component<SmallComponent>(entity).c == 'A');
         REQUIRE(world.has_components<LargeComponent>(entity));
+    }
+}
+
+TEST_CASE("Serialization round-trip", "[ecs][serialization]")
+{
+    // Register serializers once (idempotent across test runs)
+    ecs::register_serializer<Position>(
+        "Position",
+        [](const Position &p) {
+            return std::to_string(p.x) + "," + std::to_string(p.y) + "," +
+                   std::to_string(p.z);
+        },
+        [](std::string_view s) -> Position {
+            Position p{};
+            std::sscanf(s.data(), "%f,%f,%f", &p.x, &p.y, &p.z);
+            return p;
+        });
+
+    ecs::register_serializer<Velocity>(
+        "Velocity",
+        [](const Velocity &v) {
+            return std::to_string(v.vx) + "," + std::to_string(v.vy) + "," +
+                   std::to_string(v.vz);
+        },
+        [](std::string_view s) -> Velocity {
+            Velocity v{};
+            std::sscanf(s.data(), "%f,%f,%f", &v.vx, &v.vy, &v.vz);
+            return v;
+        });
+
+    // Written to build dir (ctest runs from there) so the file can be inspected
+    const std::filesystem::path tmp_path = "archon_test_serial.ecs";
+
+    SECTION("Empty world saves and loads cleanly")
+    {
+        ecs::World world;
+        world.save(tmp_path);
+
+        ecs::World world2;
+        world2.load(tmp_path);
+
+        REQUIRE(ecs::Query<Position>().size(world2) == 0);
+    }
+
+    SECTION("next_entity_id advances past loaded IDs")
+    {
+        ecs::World world;
+        auto e0 = world.create_entity();
+        world.add_components(e0, Position{1.0F, 0.0F, 0.0F});
+        world.save(tmp_path);
+
+        ecs::World world2;
+        world2.load(tmp_path);
+
+        // Creating a new entity should not collide with loaded entity 0
+        auto new_entity = world2.create_entity();
+        REQUIRE(new_entity != e0);
+    }
+
+    // Runs last so archon_test_serial.ecs in the build dir shows the full
+    // multi-entity, multi-archetype output for inspection
+    SECTION("Save and load preserves component values")
+    {
+        ecs::World world;
+
+        // Entity A: Position + Velocity
+        auto entity_a = world.create_entity();
+        world.add_components(entity_a, Position{1.0F, 2.0F, 3.0F},
+                             Velocity{4.0F, 5.0F, 6.0F});
+
+        // Entity B: Position only
+        auto entity_b = world.create_entity();
+        world.add_components(entity_b, Position{7.0F, 8.0F, 9.0F});
+
+        // Entity C: MoveOnlyComponent only (no serializer - should be absent
+        // after load)
+        ecs::register_component<MoveOnlyComponent>();
+        auto entity_c = world.create_entity();
+        world.add_components(entity_c, MoveOnlyComponent{99});
+
+        world.save(tmp_path);
+
+        ecs::World world2;
+        world2.load(tmp_path);
+
+        // Entity A: both components with correct values
+        REQUIRE(world2.has_components<Position>(entity_a));
+        REQUIRE(world2.has_components<Velocity>(entity_a));
+        auto &pos_a = world2.get_component<Position>(entity_a);
+        REQUIRE(pos_a.x == 1.0F);
+        REQUIRE(pos_a.y == 2.0F);
+        REQUIRE(pos_a.z == 3.0F);
+        auto &vel_a = world2.get_component<Velocity>(entity_a);
+        REQUIRE(vel_a.vx == 4.0F);
+        REQUIRE(vel_a.vy == 5.0F);
+        REQUIRE(vel_a.vz == 6.0F);
+
+        // Entity B: Position only
+        REQUIRE(world2.has_components<Position>(entity_b));
+        REQUIRE(!world2.has_components<Velocity>(entity_b));
+        auto &pos_b = world2.get_component<Position>(entity_b);
+        REQUIRE(pos_b.x == 7.0F);
+        REQUIRE(pos_b.y == 8.0F);
+        REQUIRE(pos_b.z == 9.0F);
+
+        // Entity C: no serializer - should not exist in world2
+        REQUIRE(!world2.remove_entity(entity_c));
     }
 }
