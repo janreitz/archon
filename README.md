@@ -158,7 +158,7 @@ include(FetchContent)
 
 FetchContent_Declare(
     archon
-    GIT_REPOSITORY https://github.com/your-username/archon.git
+    GIT_REPOSITORY https://github.com/janreitz/archon.git
     GIT_TAG        main  # or specific version tag
 )
 
