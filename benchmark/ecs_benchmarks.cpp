@@ -1,13 +1,11 @@
-#include <catch2/benchmark/catch_chronometer.hpp>
+#include "BenchmarkComponents.h"
+#include "benchmark_macros.h"
+
+#include <archon/ecs.h>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <vector>
-#define CATCH_CONFIG_ENABLE_BENCHMARKING // Enable Catch2 Benchmarking
-#include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/catch_test_macros.hpp>
-
-#include "BenchmarkComponents.h"
-#include <archon/ecs.h>
 
 // --- Helper data and functions ---
 constexpr std::size_t ENTITY_COUNT_FOR_BENCHMARK = 10000;
@@ -19,7 +17,7 @@ using ComponentB = benchmark::BenchmarkComponent<2, COMPONENT_DATA_SIZE>;
 
 // Multi-archetype component definitions
 using Position = benchmark::BenchmarkComponent<3, 24>;      // 3D position (3 * 8 bytes)
-using Velocity = benchmark::BenchmarkComponent<4, 24>;      // 3D velocity (3 * 8 bytes)  
+using Velocity = benchmark::BenchmarkComponent<4, 24>;      // 3D velocity (3 * 8 bytes)
 using Renderable = benchmark::BenchmarkComponent<5, 64>;    // Render data (mesh, texture info)
 using Health = benchmark::BenchmarkComponent<6, 8>;         // Health points
 using Mass = benchmark::BenchmarkComponent<7, 8>;           // Physics mass
@@ -103,14 +101,13 @@ struct RawArrayBenchmark {
     }
 };
 
-TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
+void run_iteration_performance_benchmarks()
 {
+    std::cout << "\n=== ECS Iteration Performance ===\n" << std::flush;
     uint64_t dummy_accumulator = 0; // To prevent optimization
 
     // --- Benchmark for iterating two components with the ECS API ---
-    BENCHMARK_ADVANCED("ECS Query: Iterate 2 Components")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("ECS Query: Iterate 2 Components", {
         ecs::World world;
         setup_world_two_components(world, ENTITY_COUNT_FOR_BENCHMARK);
 
@@ -125,12 +122,10 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // --- Benchmark for AoS (Array of Structs) baseline ---
-    BENCHMARK_ADVANCED("Baseline: AoS std::vector<struct>")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Baseline: AoS std::vector<struct>", {
         auto aos_data = setup_aos_data(ENTITY_COUNT_FOR_BENCHMARK);
 
         meter.measure([&aos_data, &dummy_accumulator] {
@@ -142,12 +137,10 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
             }
             return dummy_accumulator;
         });
-    };
+    });
 
     // --- Benchmark for true SoA (Structure of Arrays) baseline ---
-    BENCHMARK_ADVANCED("Baseline: SoA separate std::vectors")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Baseline: SoA separate std::vectors", {
         auto soa_data = setup_soa_data(ENTITY_COUNT_FOR_BENCHMARK);
 
         meter.measure([&soa_data, &dummy_accumulator] {
@@ -159,12 +152,10 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
             }
             return dummy_accumulator;
         });
-    };
+    });
 
     // --- Benchmark for C-style raw arrays baseline ---
-    BENCHMARK_ADVANCED("Baseline: Raw C arrays")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Baseline: Raw C arrays", {
         RawArrayBenchmark raw_data(ENTITY_COUNT_FOR_BENCHMARK);
 
         meter.measure([&raw_data, &dummy_accumulator] {
@@ -176,12 +167,10 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
             }
             return dummy_accumulator;
         });
-    };
+    });
 
     // --- Benchmark for iterating one component with the ECS API ---
-    BENCHMARK_ADVANCED("ECS Query: Iterate 1 Component")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("ECS Query: Iterate 1 Component", {
         ecs::World world;
         ecs::register_component<ComponentA>();
         for (std::size_t i = 0; i < ENTITY_COUNT_FOR_BENCHMARK; ++i) {
@@ -204,16 +193,17 @@ TEST_CASE("ECS Iteration Performance", "[benchmark][ecs]")
                 });
             return dummy_accumulator;
         });
-    };
+    });
 }
 
-TEST_CASE("ECS Component Type Scaling", "[benchmark][ecs][scaling]")
+void run_component_type_scaling_benchmarks()
 {
+    std::cout << "\n=== ECS Component Type Scaling ===\n" << std::flush;
     uint64_t dummy_accumulator = 0;
     constexpr std::size_t ENTITY_COUNT = 5000;
     constexpr std::size_t COMPONENT_SIZE = 128;
 
-    auto measure = [&dummy_accumulator](Catch::Benchmark::Chronometer &meter,
+    auto measure = [&dummy_accumulator](benchmark_detail::Meter &meter,
                                         ecs::World &world) {
         meter.measure([&world, &dummy_accumulator] {
             dummy_accumulator = 0;
@@ -228,69 +218,65 @@ TEST_CASE("ECS Component Type Scaling", "[benchmark][ecs][scaling]")
     };
 
     // Test with 2 component types
-    BENCHMARK_ADVANCED("2 Component Types")(Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("2 Component Types", {
         ecs::World world;
         benchmark::setup_world_with_component_types<2, COMPONENT_SIZE>(
             world, ENTITY_COUNT);
 
         measure(meter, world);
-    };
+    });
 
     // Test with 4 component types
-    BENCHMARK_ADVANCED("4 Component Types")(Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("4 Component Types", {
         ecs::World world;
         benchmark::setup_world_with_component_types<4, COMPONENT_SIZE>(
             world, ENTITY_COUNT);
 
         measure(meter, world);
-    };
+    });
 
     // Test with 8 component types
-    BENCHMARK_ADVANCED("8 Component Types")(Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("8 Component Types", {
         ecs::World world;
         benchmark::setup_world_with_component_types<8, COMPONENT_SIZE>(
             world, ENTITY_COUNT);
 
         measure(meter, world);
-    };
+    });
 
     // Test with 16 component types
-    BENCHMARK_ADVANCED("16 Component Types")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("16 Component Types", {
         ecs::World world;
         benchmark::setup_world_with_component_types<16, COMPONENT_SIZE>(
             world, ENTITY_COUNT);
 
         measure(meter, world);
-    };
+    });
 
-    // Test with 32 component types (maximum)
-    BENCHMARK_ADVANCED("32 Component Types")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    // Test with 26 component types. The ECS enforces a hard, process-wide
+    // MAX_COMPONENTS = 32 cap, and this binary also registers 6 more
+    // distinct component types later (Position/Velocity/Renderable/Health/
+    // Mass/Collider in the multi-archetype benchmarks below), so 26 is the
+    // largest count reachable here without exceeding that budget.
+    BENCHMARK("26 Component Types (process max)", {
         ecs::World world;
-        benchmark::setup_world_with_component_types<32, COMPONENT_SIZE>(
+        benchmark::setup_world_with_component_types<26, COMPONENT_SIZE>(
             world, ENTITY_COUNT);
 
         measure(meter, world);
-    };
+    });
 }
 
-TEST_CASE("ECS Setup Performance Comparison", "[benchmark][ecs][setup]")
+void run_setup_performance_benchmarks()
 {
+    std::cout << "\n=== ECS Setup Performance Comparison ===\n" << std::flush;
     constexpr std::size_t ENTITY_COUNT = 1000;
     constexpr std::size_t COMPONENT_SIZE = 128;
     constexpr std::size_t COMPONENT_COUNT =
         8; // Smaller count for faster comparison
 
     // Realistic batch setup (all components added at once)
-    BENCHMARK_ADVANCED("Batch Setup: 8 Components")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Batch Setup: 8 Components", {
         meter.measure([] {
             ecs::World world;
             benchmark::setup_world_with_component_types<COMPONENT_COUNT,
@@ -299,12 +285,10 @@ TEST_CASE("ECS Setup Performance Comparison", "[benchmark][ecs][setup]")
             return ENTITY_COUNT; // Just return something to prevent
                                  // optimization
         });
-    };
+    });
 
     // Migration-heavy setup (components added one by one)
-    BENCHMARK_ADVANCED("Migration Setup: 8 Components")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Migration Setup: 8 Components", {
         meter.measure([] {
             ecs::World world;
             benchmark::setup_world_with_component_types_migrating<
@@ -312,7 +296,7 @@ TEST_CASE("ECS Setup Performance Comparison", "[benchmark][ecs][setup]")
             return ENTITY_COUNT; // Just return something to prevent
                                  // optimization
         });
-    };
+    });
 }
 
 // Multi-archetype setup functions
@@ -324,20 +308,20 @@ void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
     ecs::register_component<Velocity>();
     ecs::register_component<Renderable>();
     ecs::register_component<Health>();
-    
+
     std::size_t moving_entities = static_cast<std::size_t>(total_entities * 0.70);
     std::size_t renderable_entities = static_cast<std::size_t>(total_entities * 0.20);
     std::size_t damageable_entities = total_entities - moving_entities - renderable_entities;
-    
+
     // 70% Moving objects (Position + Velocity)
     for (std::size_t i = 0; i < moving_entities; ++i) {
         auto entity = world.create_entity();
-        world.add_components(entity, 
+        world.add_components(entity,
             Position::initialize_sequential(i),
             Velocity::initialize_sequential(i + 100)
         );
     }
-    
+
     // 20% Renderable moving objects (Position + Velocity + Renderable)
     for (std::size_t i = 0; i < renderable_entities; ++i) {
         auto entity = world.create_entity();
@@ -347,7 +331,7 @@ void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
             Renderable::initialize_sequential(i + moving_entities + 200)
         );
     }
-    
+
     // 10% Damageable objects (Position + Health)
     for (std::size_t i = 0; i < damageable_entities; ++i) {
         auto entity = world.create_entity();
@@ -366,11 +350,11 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
     ecs::register_component<Mass>();
     ecs::register_component<Collider>();
     ecs::register_component<Health>();
-    
+
     std::size_t basic_particles = static_cast<std::size_t>(total_entities * 0.50);
     std::size_t physics_objects = static_cast<std::size_t>(total_entities * 0.30);
     std::size_t interactive_objects = total_entities - basic_particles - physics_objects;
-    
+
     // 50% Basic particles (Position + Velocity)
     for (std::size_t i = 0; i < basic_particles; ++i) {
         auto entity = world.create_entity();
@@ -379,7 +363,7 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
             Velocity::initialize_sequential(i + 100)
         );
     }
-    
+
     // 30% Physics objects (Position + Velocity + Mass + Collider)
     for (std::size_t i = 0; i < physics_objects; ++i) {
         auto entity = world.create_entity();
@@ -390,7 +374,7 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
             Collider::initialize_sequential(i + basic_particles + 300)
         );
     }
-    
+
     // 20% Interactive objects (Position + Velocity + Mass + Collider + Health)
     for (std::size_t i = 0; i < interactive_objects; ++i) {
         auto entity = world.create_entity();
@@ -411,20 +395,20 @@ void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
     ecs::register_component<Velocity>();
     ecs::register_component<Mass>();
     ecs::register_component<Health>();
-    
+
     // 80% entities have only Position
     std::size_t position_only = static_cast<std::size_t>(total_entities * 0.80);
     // 15% entities have Position + Velocity
     std::size_t position_velocity = static_cast<std::size_t>(total_entities * 0.15);
     // 5% entities have Position + Velocity + Mass + Health (target for sparse query)
     std::size_t full_entities = total_entities - position_only - position_velocity;
-    
+
     // Position-only entities
     for (std::size_t i = 0; i < position_only; ++i) {
         auto entity = world.create_entity();
         world.add_components(entity, Position::initialize_sequential(i));
     }
-    
+
     // Position + Velocity entities
     for (std::size_t i = 0; i < position_velocity; ++i) {
         auto entity = world.create_entity();
@@ -433,7 +417,7 @@ void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
             Velocity::initialize_sequential(i + position_only + 100)
         );
     }
-    
+
     // Full entities (Position + Velocity + Mass + Health)
     for (std::size_t i = 0; i < full_entities; ++i) {
         auto entity = world.create_entity();
@@ -446,15 +430,14 @@ void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
     }
 }
 
-TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype]")
+void run_multi_archetype_query_benchmarks()
 {
+    std::cout << "\n=== Multi-Archetype Query Performance ===\n" << std::flush;
     uint64_t dummy_accumulator = 0;
     constexpr std::size_t ENTITY_COUNT = 10000;
 
     // Game Entities Scenario - Query Position + Velocity (90% entities match)
-    BENCHMARK_ADVANCED("Game Entities: Position+Velocity Query (90% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Game Entities: Position+Velocity Query (90% match)", {
         ecs::World world;
         setup_game_entities_scenario(world, ENTITY_COUNT);
 
@@ -466,12 +449,10 @@ TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Game Entities Scenario - Query Position only (100% entities match)
-    BENCHMARK_ADVANCED("Game Entities: Position Query (100% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Game Entities: Position Query (100% match)", {
         ecs::World world;
         setup_game_entities_scenario(world, ENTITY_COUNT);
 
@@ -483,12 +464,10 @@ TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Game Entities Scenario - Query Position + Health (10% entities match)
-    BENCHMARK_ADVANCED("Game Entities: Position+Health Query (10% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Game Entities: Position+Health Query (10% match)", {
         ecs::World world;
         setup_game_entities_scenario(world, ENTITY_COUNT);
 
@@ -500,12 +479,10 @@ TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Simulation Entities Scenario - Query Position + Velocity (all match)
-    BENCHMARK_ADVANCED("Simulation: Position+Velocity Query (100% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Simulation: Position+Velocity Query (100% match)", {
         ecs::World world;
         setup_simulation_entities_scenario(world, ENTITY_COUNT);
 
@@ -517,48 +494,42 @@ TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Simulation Entities Scenario - Complex query (20% entities match)
-    BENCHMARK_ADVANCED("Simulation: Position+Velocity+Mass+Health Query (20% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Simulation: Position+Velocity+Mass+Health Query (20% match)", {
         ecs::World world;
         setup_simulation_entities_scenario(world, ENTITY_COUNT);
 
         meter.measure([&world, &dummy_accumulator] {
             dummy_accumulator = 0;
             ecs::Query<Position, Velocity, Mass, Health>().each(
-                world, [&](Position &pos, Velocity &vel, 
+                world, [&](Position &pos, Velocity &vel,
                           Mass &mass, Health &health) {
                     dummy_accumulator += pos.data_[0] + vel.data_[0] + mass.data_[0] + health.data_[0];
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Sparse Query Scenario - Very selective query (5% entities match)
-    BENCHMARK_ADVANCED("Sparse: Position+Velocity+Mass+Health Query (5% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Sparse: Position+Velocity+Mass+Health Query (5% match)", {
         ecs::World world;
         setup_sparse_query_scenario(world, ENTITY_COUNT);
 
         meter.measure([&world, &dummy_accumulator] {
             dummy_accumulator = 0;
             ecs::Query<Position, Velocity, Mass, Health>().each(
-                world, [&](Position &pos, Velocity &vel, 
+                world, [&](Position &pos, Velocity &vel,
                           Mass &mass, Health &health) {
                     dummy_accumulator += pos.data_[0] + vel.data_[0] + mass.data_[0] + health.data_[0];
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Sparse Query Scenario - Broad query (100% entities match)
-    BENCHMARK_ADVANCED("Sparse: Position Query (100% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Sparse: Position Query (100% match)", {
         ecs::World world;
         setup_sparse_query_scenario(world, ENTITY_COUNT);
 
@@ -570,18 +541,17 @@ TEST_CASE("Multi-Archetype Query Performance", "[benchmark][ecs][multi-archetype
                 });
             return dummy_accumulator;
         });
-    };
+    });
 }
 
-TEST_CASE("Archetype vs Single-Type Performance Comparison", "[benchmark][ecs][archetype-comparison]")
+void run_archetype_vs_single_type_benchmarks()
 {
+    std::cout << "\n=== Archetype vs Single-Type Performance Comparison ===\n" << std::flush;
     uint64_t dummy_accumulator = 0;
     constexpr std::size_t ENTITY_COUNT = 10000;
 
     // Single archetype baseline (all entities have same components)
-    BENCHMARK_ADVANCED("Single Archetype: Position+Velocity Query")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Single Archetype: Position+Velocity Query", {
         ecs::World world;
         setup_world_two_components(world, ENTITY_COUNT);
 
@@ -593,12 +563,10 @@ TEST_CASE("Archetype vs Single-Type Performance Comparison", "[benchmark][ecs][a
                 });
             return dummy_accumulator;
         });
-    };
+    });
 
     // Multi-archetype with same query selectivity
-    BENCHMARK_ADVANCED("Multi-Archetype: Position+Velocity Query (90% match)")
-    (Catch::Benchmark::Chronometer meter)
-    {
+    BENCHMARK("Multi-Archetype: Position+Velocity Query (90% match)", {
         ecs::World world;
         setup_game_entities_scenario(world, ENTITY_COUNT);
 
@@ -610,5 +578,16 @@ TEST_CASE("Archetype vs Single-Type Performance Comparison", "[benchmark][ecs][a
                 });
             return dummy_accumulator;
         });
-    };
+    });
+}
+
+int main()
+{
+    run_iteration_performance_benchmarks();
+    run_component_type_scaling_benchmarks();
+    run_setup_performance_benchmarks();
+    run_multi_archetype_query_benchmarks();
+    run_archetype_vs_single_type_benchmarks();
+
+    return 0;
 }

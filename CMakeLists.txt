@@ -28,16 +28,6 @@ if(ENABLE_TRACY)
     add_definitions(-DTRACY_ENABLE)
 endif()
 
-# Fetch Catch2 if benchmarks are enabled
-if(BUILD_BENCHMARKS)
-    FetchContent_Declare(
-        Catch2
-        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG        v3.7.1
-    )
-    FetchContent_MakeAvailable(Catch2)
-endif()
-
 # Library source files
 file(GLOB_RECURSE ARCHON_LIB_SOURCES
     src/*.cpp
@@ -193,11 +183,10 @@ endif()
 # Benchmarks
 if(BUILD_BENCHMARKS)
     add_executable(archon_benchmarks benchmark/ecs_benchmarks.cpp)
-    
-    target_link_libraries(archon_benchmarks 
-        PRIVATE 
-            archon 
-            Catch2::Catch2WithMain 
+
+    target_link_libraries(archon_benchmarks
+        PRIVATE
+            archon
     )
     
     target_include_directories(archon_benchmarks
