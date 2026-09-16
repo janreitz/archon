@@ -54,7 +54,7 @@ void benchmark_ecs_two_components()
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    std::cout << "ECS 2-component: " << duration.count() / ITERATIONS
+    std::cout << "ECS 2-component: " << static_cast<std::size_t>(duration.count()) / ITERATIONS
               << "μs per iteration\n";
     std::cout << "Dummy result: " << dummy_accumulator << "\n";
 }
@@ -95,7 +95,7 @@ void benchmark_baseline_soa()
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    std::cout << "SoA baseline: " << duration.count() / ITERATIONS
+    std::cout << "SoA baseline: " << static_cast<std::size_t>(duration.count()) / ITERATIONS
               << "μs per iteration\n";
     std::cout << "Dummy result: " << dummy_accumulator << "\n";
 }
@@ -104,12 +104,12 @@ void component_count_scaling()
 {
     std::cout << "========Component Count Scaling=========\n";
     uint64_t dummy_accumulator = 0;
-    constexpr std::size_t ENTITY_COUNT = 50000;
+    constexpr std::size_t SCALING_ENTITY_COUNT = 50000;
     constexpr std::size_t COMPONENT_SIZE = 128;
 
     ecs::World world;
     benchmark::setup_world_with_component_types<32, COMPONENT_SIZE>(
-        world, ENTITY_COUNT);
+        world, SCALING_ENTITY_COUNT);
 
     std::cout << "World Setup Complete\n";
 

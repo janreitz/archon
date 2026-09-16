@@ -28,6 +28,76 @@ if(ENABLE_TRACY)
     add_definitions(-DTRACY_ENABLE)
 endif()
 
+# ---------------------------------------------------------------------------
+# Warning flags. ---------------------------------------------------------------------------
+function(archon_apply_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE
+            /W4          # High warning level
+            /WX          # Treat warnings as errors
+            /permissive- # Disable non-conforming code
+            /w14242      # Conversion possible loss of data
+            /w14254      # Operator conversion possible loss of data
+            /w14263      # Member function does not override base class virtual member function
+            /w14265      # Class has virtual functions but destructor is not virtual
+            /w14287      # Unsigned/negative constant mismatch
+            /we4289      # Loop control variable used outside loop
+            /w14296      # Expression is always false/true
+            /w14311      # Pointer truncation
+            /w14545      # Expression before comma has no effect
+            /w14546      # Function call before comma missing argument list
+            /w14547      # Operator before comma has no effect
+            /w14549      # Operator before comma has no effect
+            /w14555      # Expression has no effect
+            /w14619      # Pragma warning: there is no warning number
+            /w14640      # Thread unsafe static member initialization
+            /w14826      # Conversion is sign-extended
+            /w14905      # Wide string literal cast
+            /w14906      # String literal cast
+            /w14928      # Illegal copy-initialization
+        )
+    else()
+        target_compile_options(${target} PRIVATE
+            -Wall                    # Enable most warning messages
+            -Wextra                  # Enable extra warning messages
+            -Werror                  # Treat warnings as errors
+            -Wpedantic               # Strict ISO C++ compliance
+            -Wshadow                 # Warn about variable shadowing
+            -Wnon-virtual-dtor       # Warn about non-virtual destructors
+            -Wold-style-cast         # Warn about C-style casts
+            -Wcast-align             # Warn about pointer casts that increase alignment
+            -Wcast-qual              # Warn about casts that drop const/volatile
+            -Wunused                 # Warn about unused variables/functions
+            -Woverloaded-virtual     # Warn about overloaded virtual functions
+            -Wconversion             # Warn about type conversions
+            -Wsign-conversion        # Warn about sign conversions
+            -Wmisleading-indentation # Warn about misleading indentation
+            -Wnull-dereference       # Warn about null dereferences
+            -Wdouble-promotion       # Warn about double promotions
+            -Wformat=2               # Extra format string checking
+            -Wundef                  # Warn about undefined identifiers in #if
+            -Wredundant-decls        # Warn about repeated declarations
+            -Wextra-semi             # Warn about redundant semicolons
+            -Wsuggest-override       # Warn when a virtual could be marked override
+            # GCC-specific warnings (unsupported by Clang)
+            $<$<CXX_COMPILER_ID:GNU>:-Wduplicated-cond>
+            $<$<CXX_COMPILER_ID:GNU>:-Wduplicated-branches>
+            $<$<CXX_COMPILER_ID:GNU>:-Wlogical-op>
+            $<$<CXX_COMPILER_ID:GNU>:-Wuseless-cast>
+            $<$<CXX_COMPILER_ID:GNU>:-Wuninitialized>
+            $<$<CXX_COMPILER_ID:GNU>:-Wmaybe-uninitialized>
+        )
+
+        # Clang-specific warnings
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            target_compile_options(${target} PRIVATE
+                -Wno-c++98-compat       # We use C++20, disable C++98 compat warnings
+                -Wno-c++98-compat-pedantic
+            )
+        endif()
+    endif()
+endfunction()
+
 # Library source files
 file(GLOB_RECURSE ARCHON_LIB_SOURCES
     src/*.cpp
@@ -48,65 +118,8 @@ target_include_directories(archon
 # Require C++20 for this library and any targets that link to it
 target_compile_features(archon PUBLIC cxx_std_20)
 
-# Compiler-specific warning flags
-if(MSVC)
-    target_compile_options(archon PRIVATE
-        /W4          # High warning level
-        /WX          # Treat warnings as errors
-        /permissive- # Disable non-conforming code
-        /w14242      # Conversion possible loss of data
-        /w14254      # Operator conversion possible loss of data
-        /w14263      # Member function does not override base class virtual member function
-        /w14265      # Class has virtual functions but destructor is not virtual
-        /w14287      # Unsigned/negative constant mismatch
-        /we4289      # Loop control variable used outside loop
-        /w14296      # Expression is always false/true
-        /w14311      # Pointer truncation
-        /w14545      # Expression before comma has no effect
-        /w14546      # Function call before comma missing argument list
-        /w14547      # Operator before comma has no effect
-        /w14549      # Operator before comma has no effect
-        /w14555      # Expression has no effect
-        /w14619      # Pragma warning: there is no warning number
-        /w14640      # Thread unsafe static member initialization
-        /w14826      # Conversion is sign-extended
-        /w14905      # Wide string literal cast
-        /w14906      # String literal cast
-        /w14928      # Illegal copy-initialization
-    )
-else()
-    target_compile_options(archon PRIVATE
-        -Wall                    # Enable most warning messages
-        -Wextra                  # Enable extra warning messages
-        -Werror                  # Treat warnings as errors
-        -Wpedantic               # Strict ISO C++ compliance
-        -Wshadow                 # Warn about variable shadowing
-        -Wnon-virtual-dtor       # Warn about non-virtual destructors
-        -Wold-style-cast         # Warn about C-style casts
-        -Wcast-align             # Warn about pointer casts that increase alignment
-        -Wunused                 # Warn about unused variables/functions
-        -Woverloaded-virtual     # Warn about overloaded virtual functions
-        -Wconversion             # Warn about type conversions
-        -Wsign-conversion        # Warn about sign conversions
-        -Wmisleading-indentation # Warn about misleading indentation
-        -Wnull-dereference       # Warn about null dereferences
-        -Wdouble-promotion       # Warn about double promotions
-        -Wformat=2               # Extra format string checking
-        # GCC-specific warnings
-        $<$<CXX_COMPILER_ID:GNU>:-Wduplicated-cond>
-        $<$<CXX_COMPILER_ID:GNU>:-Wduplicated-branches>
-        $<$<CXX_COMPILER_ID:GNU>:-Wlogical-op>
-        $<$<CXX_COMPILER_ID:GNU>:-Wuseless-cast>
-    )
-    
-    # Clang-specific warnings
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_compile_options(archon PRIVATE
-            -Wno-c++98-compat       # We use C++20, disable C++98 compat warnings
-            -Wno-c++98-compat-pedantic
-        )
-    endif()
-endif()
+# Compiler warning flags (shared definition above, applied to every target)
+archon_apply_warnings(archon)
 
 if(ENABLE_PROFILING_FLAGS)
     target_compile_options(archon PRIVATE
@@ -169,12 +182,7 @@ if(BUILD_TESTS)
                 ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
 
-        # Apply same warning flags to tests
-        if(MSVC)
-            target_compile_options(archon_unit_tests PRIVATE /W4 /WX /permissive-)
-        else()
-            target_compile_options(archon_unit_tests PRIVATE -Wall -Wextra -Werror -Wpedantic)
-        endif()
+        archon_apply_warnings(archon_unit_tests)
 
         add_test(NAME archon_unit_tests COMMAND archon_unit_tests)
     endif()
@@ -195,12 +203,7 @@ if(BUILD_BENCHMARKS)
             ${CMAKE_CURRENT_SOURCE_DIR}/benchmark  # For BenchmarkComponents.h
     )
 
-    # Apply warning flags to benchmarks
-    if(MSVC)
-        target_compile_options(archon_benchmarks PRIVATE /W4 /WX /permissive-)
-    else()
-        target_compile_options(archon_benchmarks PRIVATE -Wall -Wextra -Werror -Wpedantic)
-    endif()
+    archon_apply_warnings(archon_benchmarks)
 
     if(ENABLE_TRACY)
         target_link_libraries(archon_benchmarks PRIVATE Tracy::TracyClient)
@@ -218,13 +221,8 @@ if(BUILD_BENCHMARKS)
             ${CMAKE_CURRENT_SOURCE_DIR}/benchmark
     )
     
-    # Apply warning flags to profile benchmark
-    if(MSVC)
-        target_compile_options(archon_profile_benchmark PRIVATE /W4 /WX /permissive-)
-    else()
-        target_compile_options(archon_profile_benchmark PRIVATE -Wall -Wextra -Werror -Wpedantic)
-    endif()
-    
+    archon_apply_warnings(archon_profile_benchmark)
+
     if(ENABLE_TRACY)
         target_link_libraries(archon_profile_benchmark PRIVATE Tracy::TracyClient)
     endif()
@@ -241,13 +239,8 @@ if(BUILD_BENCHMARKS)
             ${CMAKE_CURRENT_SOURCE_DIR}/benchmark
     )
     
-    # Apply warning flags to overhead analysis
-    if(MSVC)
-        target_compile_options(archon_overhead_analysis PRIVATE /W4 /WX /permissive-)
-    else()
-        target_compile_options(archon_overhead_analysis PRIVATE -Wall -Wextra -Werror -Wpedantic)
-    endif()
-    
+    archon_apply_warnings(archon_overhead_analysis)
+
     if(ENABLE_TRACY)
         target_link_libraries(archon_overhead_analysis PRIVATE Tracy::TracyClient)
     endif()

@@ -601,17 +601,19 @@ void stress_test_multiple_entities_with_frequent_transitions()
     }
 
     for (int i = 1; i < NUM_ENTITIES; i += 2) {
-        world.remove_components<TrivialComponent>(entities[i]);
-        world.add_components(entities[i], TrivialComponent{i + 1000});
+        const auto idx = static_cast<std::size_t>(i);
+        world.remove_components<TrivialComponent>(entities[idx]);
+        world.add_components(entities[idx], TrivialComponent{i + 1000});
     }
 
     for (int i = 0; i < NUM_ENTITIES; ++i) {
-        REQUIRE(world.has_components<TrivialComponent>(entities[i]),
+        const auto idx = static_cast<std::size_t>(i);
+        REQUIRE(world.has_components<TrivialComponent>(entities[idx]),
                 "entity should have trivial component");
-        REQUIRE(world.has_components<NonTrivialComponent>(entities[i]),
+        REQUIRE(world.has_components<NonTrivialComponent>(entities[idx]),
                 "entity should have non-trivial component");
 
-        auto &trivial = world.get_component<TrivialComponent>(entities[i]);
+        auto &trivial = world.get_component<TrivialComponent>(entities[idx]);
         if (i % 2 == 0) {
             REQUIRE(trivial.value == i,
                     "even-indexed entity should keep its original value");
@@ -1279,7 +1281,7 @@ void remove_complex_components()
     // Resize and add three components
     std::vector<std::string> names = {"first", "second", "third"};
 
-    for (int i = 0; i < 3; ++i) {
+    for (std::size_t i = 0; i < 3; ++i) {
         ComplexComponent comp(names[i]);
         array.push(&comp);
     }
@@ -1551,26 +1553,26 @@ void test_function_types()
     using MutableFunc = void(Position &, Velocity &);
     using ConstFunc = void(const Position &, const Velocity &);
     using ValueFunc = void(Position, Velocity);
-    using MixedFunc = void(Position &, const Velocity &);
-    using MixedValueFunc = void(Position, const Velocity &);
-    using EmptyFunc = void();
+    using MixedFuncLocal = void(Position &, const Velocity &);
+    using MixedValueFuncLocal = void(Position, const Velocity &);
+    using EmptyFuncLocal = void();
 
     static_assert(ArgsConstCompatible<World, MutableFunc>);
     static_assert(ArgsConstCompatible<World, ConstFunc>);
     static_assert(ArgsConstCompatible<World, ValueFunc>);
-    static_assert(ArgsConstCompatible<World, MixedFunc>);
-    static_assert(ArgsConstCompatible<World, MixedValueFunc>);
-    static_assert(ArgsConstCompatible<World, EmptyFunc>);
+    static_assert(ArgsConstCompatible<World, MixedFuncLocal>);
+    static_assert(ArgsConstCompatible<World, MixedValueFuncLocal>);
+    static_assert(ArgsConstCompatible<World, EmptyFuncLocal>);
 
     // Test const world
     static_assert(ArgsConstCompatible<const World, ConstFunc>);
     static_assert(ArgsConstCompatible<const World, ValueFunc>);
-    static_assert(ArgsConstCompatible<const World, MixedValueFunc>);
-    static_assert(ArgsConstCompatible<const World, EmptyFunc>);
+    static_assert(ArgsConstCompatible<const World, MixedValueFuncLocal>);
+    static_assert(ArgsConstCompatible<const World, EmptyFuncLocal>);
 
     // These should fail with const world
     static_assert(!ArgsConstCompatible<const World, MutableFunc>);
-    static_assert(!ArgsConstCompatible<const World, MixedFunc>);
+    static_assert(!ArgsConstCompatible<const World, MixedFuncLocal>);
 }
 
 // Test with lambda functions (more realistic)
@@ -1780,8 +1782,8 @@ void query_works_with_const_world()
         ecs::EntityId entity = world.create_entity();
         Position pos{static_cast<float>(i), static_cast<float>(i * 2),
                      static_cast<float>(i * 3)};
-        Velocity vel{static_cast<float>(i * 0.1f), static_cast<float>(i * 0.2f),
-                     static_cast<float>(i * 0.3f)};
+        Velocity vel{static_cast<float>(i) * 0.1f, static_cast<float>(i) * 0.2f,
+                     static_cast<float>(i) * 0.3f};
         world.add_components(entity, pos, vel);
     }
 

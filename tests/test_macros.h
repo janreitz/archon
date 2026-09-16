@@ -6,6 +6,22 @@
 #include <cstdlib>
 #include <source_location>
 
+// std::source_location::line() returns uint_least32_t, which happens to be
+// exactly `unsigned int` on mainstream platforms (making the cast below a
+// no-op there) but isn't guaranteed to be, so the cast stays for portability.
+// GCC's -Wuseless-cast doesn't know that and flags it on platforms where it
+// is a no-op; Clang has no such warning, and doesn't recognize the pragma
+// name, so only GCC gets the suppression.
+#if defined(__GNUC__) && !defined(__clang__)
+#define TEST_MACROS_SUPPRESS_USELESS_CAST_BEGIN                               \
+    _Pragma("GCC diagnostic push")                                            \
+        _Pragma("GCC diagnostic ignored \"-Wuseless-cast\"")
+#define TEST_MACROS_SUPPRESS_USELESS_CAST_END _Pragma("GCC diagnostic pop")
+#else
+#define TEST_MACROS_SUPPRESS_USELESS_CAST_BEGIN
+#define TEST_MACROS_SUPPRESS_USELESS_CAST_END
+#endif
+
 namespace test_detail
 {
 
@@ -20,9 +36,11 @@ inline int expect_failures = 0;
 inline void require_fail(const char *expr, std::source_location loc,
                          const char *fmt, ...)
 {
+    TEST_MACROS_SUPPRESS_USELESS_CAST_BEGIN
     std::fprintf(stderr,
                  "%s:%u: assertion '%s' failed in '%s': ", loc.file_name(),
                  static_cast<unsigned>(loc.line()), expr, loc.function_name());
+    TEST_MACROS_SUPPRESS_USELESS_CAST_END
     va_list args;
     va_start(args, fmt);
     std::vfprintf(stderr, fmt, args);
@@ -35,9 +53,11 @@ inline void require_fail(const char *expr, std::source_location loc,
 inline void expect_fail(const char *expr, std::source_location loc,
                         const char *fmt, ...)
 {
+    TEST_MACROS_SUPPRESS_USELESS_CAST_BEGIN
     std::fprintf(stdout,
                  "%s:%u: expectation '%s' failed in '%s': ", loc.file_name(),
                  static_cast<unsigned>(loc.line()), expr, loc.function_name());
+    TEST_MACROS_SUPPRESS_USELESS_CAST_END
     va_list args;
     va_start(args, fmt);
     std::vfprintf(stderr, fmt, args);
@@ -59,14 +79,14 @@ template <typename Fn> void run(const char *name, Fn fn)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define REQUIRE(cond, ...)                                                     \
-    (static_cast<bool>(cond)                                                   \
+    ((cond)                                                                    \
          ? void(0)                                                             \
          : ::test_detail::require_fail(#cond, std::source_location::current(), \
                                        __VA_ARGS__))
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define EXPECT(cond, ...)                                                      \
-    (static_cast<bool>(cond)                                                   \
+    ((cond)                                                                    \
          ? void(0)                                                             \
          : ::test_detail::expect_fail(                                 \
                #cond, std::source_location::current(), __VA_ARGS__))

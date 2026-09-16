@@ -113,23 +113,28 @@ void test_component_access_patterns()
     auto aos_duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    std::cout << "ECS Query system:     " << query_duration.count() / ITERATIONS
+    std::cout << "ECS Query system:     "
+              << static_cast<std::size_t>(query_duration.count()) / ITERATIONS
               << "μs per iteration" << std::endl;
     std::cout << "SoA baseline:         "
-              << baseline_duration.count() / ITERATIONS << "μs per iteration"
-              << std::endl;
-    std::cout << "AoS baseline:         " << aos_duration.count() / ITERATIONS
+              << static_cast<std::size_t>(baseline_duration.count()) / ITERATIONS
+              << "μs per iteration" << std::endl;
+    std::cout << "AoS baseline:         "
+              << static_cast<std::size_t>(aos_duration.count()) / ITERATIONS
               << "μs per iteration" << std::endl;
     std::cout << "\nOverhead ratios:" << std::endl;
     std::cout << "  ECS vs SoA:   "
-              << (double)query_duration.count() / baseline_duration.count()
+              << static_cast<double>(query_duration.count()) /
+                     static_cast<double>(baseline_duration.count())
               << "x" << std::endl;
     std::cout << "  ECS vs AoS:   "
-              << (double)query_duration.count() / aos_duration.count() << "x"
-              << std::endl;
+              << static_cast<double>(query_duration.count()) /
+                     static_cast<double>(aos_duration.count())
+              << "x" << std::endl;
     std::cout << "  SoA vs AoS:   "
-              << (double)baseline_duration.count() / aos_duration.count() << "x"
-              << std::endl;
+              << static_cast<double>(baseline_duration.count()) /
+                     static_cast<double>(aos_duration.count())
+              << "x" << std::endl;
 
     std::cout << "Dummy result: " << dummy << std::endl;
 }
@@ -201,20 +206,23 @@ void test_memory_access_patterns()
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
     std::cout << "ECS minimal access:       "
-              << minimal_duration.count() / ITERATIONS << "μs per iteration"
-              << std::endl;
+              << static_cast<std::size_t>(minimal_duration.count()) / ITERATIONS
+              << "μs per iteration" << std::endl;
     std::cout << "ECS full computation:     "
-              << full_duration.count() / ITERATIONS << "μs per iteration"
-              << std::endl;
+              << static_cast<std::size_t>(full_duration.count()) / ITERATIONS
+              << "μs per iteration" << std::endl;
     std::cout << "SoA minimal access:       "
-              << soa_minimal_duration.count() / ITERATIONS << "μs per iteration"
-              << std::endl;
+              << static_cast<std::size_t>(soa_minimal_duration.count()) / ITERATIONS
+              << "μs per iteration" << std::endl;
     std::cout << "\nAccess overhead analysis:" << std::endl;
     std::cout << "  ECS access overhead:    "
-              << (double)minimal_duration.count() / soa_minimal_duration.count()
+              << static_cast<double>(minimal_duration.count()) /
+                     static_cast<double>(soa_minimal_duration.count())
               << "x" << std::endl;
     std::cout << "  Computation difference: "
-              << (full_duration.count() - minimal_duration.count()) / ITERATIONS
+              << static_cast<std::size_t>(full_duration.count() -
+                                          minimal_duration.count()) /
+                     ITERATIONS
               << "μs vs baseline computation" << std::endl;
 
     std::cout << "Dummy result: " << dummy << std::endl;
@@ -242,7 +250,8 @@ void test_query_construction_overhead()
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-    std::cout << "Query construction: " << duration.count() / MANY_ITERATIONS
+    std::cout << "Query construction: "
+              << static_cast<std::size_t>(duration.count()) / MANY_ITERATIONS
               << "μs per query (" << MANY_ITERATIONS << " queries)"
               << std::endl;
 }

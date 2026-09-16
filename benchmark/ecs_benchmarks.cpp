@@ -309,8 +309,8 @@ void setup_game_entities_scenario(ecs::World &world, std::size_t total_entities)
     ecs::register_component<Renderable>();
     ecs::register_component<Health>();
 
-    std::size_t moving_entities = static_cast<std::size_t>(total_entities * 0.70);
-    std::size_t renderable_entities = static_cast<std::size_t>(total_entities * 0.20);
+    std::size_t moving_entities = static_cast<std::size_t>(static_cast<double>(total_entities) * 0.70);
+    std::size_t renderable_entities = static_cast<std::size_t>(static_cast<double>(total_entities) * 0.20);
     std::size_t damageable_entities = total_entities - moving_entities - renderable_entities;
 
     // 70% Moving objects (Position + Velocity)
@@ -351,8 +351,8 @@ void setup_simulation_entities_scenario(ecs::World &world, std::size_t total_ent
     ecs::register_component<Collider>();
     ecs::register_component<Health>();
 
-    std::size_t basic_particles = static_cast<std::size_t>(total_entities * 0.50);
-    std::size_t physics_objects = static_cast<std::size_t>(total_entities * 0.30);
+    std::size_t basic_particles = static_cast<std::size_t>(static_cast<double>(total_entities) * 0.50);
+    std::size_t physics_objects = static_cast<std::size_t>(static_cast<double>(total_entities) * 0.30);
     std::size_t interactive_objects = total_entities - basic_particles - physics_objects;
 
     // 50% Basic particles (Position + Velocity)
@@ -397,9 +397,9 @@ void setup_sparse_query_scenario(ecs::World &world, std::size_t total_entities)
     ecs::register_component<Health>();
 
     // 80% entities have only Position
-    std::size_t position_only = static_cast<std::size_t>(total_entities * 0.80);
+    std::size_t position_only = static_cast<std::size_t>(static_cast<double>(total_entities) * 0.80);
     // 15% entities have Position + Velocity
-    std::size_t position_velocity = static_cast<std::size_t>(total_entities * 0.15);
+    std::size_t position_velocity = static_cast<std::size_t>(static_cast<double>(total_entities) * 0.15);
     // 5% entities have Position + Velocity + Mass + Health (target for sparse query)
     std::size_t full_entities = total_entities - position_only - position_velocity;
 
@@ -445,7 +445,8 @@ void run_multi_archetype_query_benchmarks()
             dummy_accumulator = 0;
             ecs::Query<Position, Velocity>().each(
                 world, [&](Position &pos, Velocity &vel) {
-                    dummy_accumulator += pos.data_[0] + vel.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(pos.data_[0]) +
+                                         static_cast<uint64_t>(vel.data_[0]);
                 });
             return dummy_accumulator;
         });
@@ -475,7 +476,8 @@ void run_multi_archetype_query_benchmarks()
             dummy_accumulator = 0;
             ecs::Query<Position, Health>().each(
                 world, [&](Position &pos, Health &health) {
-                    dummy_accumulator += pos.data_[0] + health.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(pos.data_[0]) +
+                                         static_cast<uint64_t>(health.data_[0]);
                 });
             return dummy_accumulator;
         });
@@ -490,7 +492,8 @@ void run_multi_archetype_query_benchmarks()
             dummy_accumulator = 0;
             ecs::Query<Position, Velocity>().each(
                 world, [&](Position &pos, Velocity &vel) {
-                    dummy_accumulator += pos.data_[0] + vel.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(pos.data_[0]) +
+                                         static_cast<uint64_t>(vel.data_[0]);
                 });
             return dummy_accumulator;
         });
@@ -506,7 +509,10 @@ void run_multi_archetype_query_benchmarks()
             ecs::Query<Position, Velocity, Mass, Health>().each(
                 world, [&](Position &pos, Velocity &vel,
                           Mass &mass, Health &health) {
-                    dummy_accumulator += pos.data_[0] + vel.data_[0] + mass.data_[0] + health.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(pos.data_[0]) +
+                                         static_cast<uint64_t>(vel.data_[0]) +
+                                         static_cast<uint64_t>(mass.data_[0]) +
+                                         static_cast<uint64_t>(health.data_[0]);
                 });
             return dummy_accumulator;
         });
@@ -522,7 +528,10 @@ void run_multi_archetype_query_benchmarks()
             ecs::Query<Position, Velocity, Mass, Health>().each(
                 world, [&](Position &pos, Velocity &vel,
                           Mass &mass, Health &health) {
-                    dummy_accumulator += pos.data_[0] + vel.data_[0] + mass.data_[0] + health.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(pos.data_[0]) +
+                                         static_cast<uint64_t>(vel.data_[0]) +
+                                         static_cast<uint64_t>(mass.data_[0]) +
+                                         static_cast<uint64_t>(health.data_[0]);
                 });
             return dummy_accumulator;
         });
@@ -559,7 +568,8 @@ void run_archetype_vs_single_type_benchmarks()
             dummy_accumulator = 0;
             ecs::Query<ComponentA, ComponentB>().each(
                 world, [&](ComponentA &a, ComponentB &b) {
-                    dummy_accumulator += a.data_[0] + b.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(a.data_[0]) +
+                                         static_cast<uint64_t>(b.data_[0]);
                 });
             return dummy_accumulator;
         });
@@ -574,7 +584,8 @@ void run_archetype_vs_single_type_benchmarks()
             dummy_accumulator = 0;
             ecs::Query<Position, Velocity>().each(
                 world, [&](Position &pos, Velocity &vel) {
-                    dummy_accumulator += pos.data_[0] + vel.data_[0];
+                    dummy_accumulator += static_cast<uint64_t>(pos.data_[0]) +
+                                         static_cast<uint64_t>(vel.data_[0]);
                 });
             return dummy_accumulator;
         });
