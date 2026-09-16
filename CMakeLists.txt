@@ -28,8 +28,8 @@ if(ENABLE_TRACY)
     add_definitions(-DTRACY_ENABLE)
 endif()
 
-# Fetch Catch2 if tests or benchmarks are enabled
-if(BUILD_TESTS OR BUILD_BENCHMARKS)
+# Fetch Catch2 if benchmarks are enabled
+if(BUILD_BENCHMARKS)
     FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -172,10 +172,10 @@ if(BUILD_TESTS)
 
     if(ARCHON_UNIT_TEST_SOURCES)
         add_executable(archon_unit_tests ${ARCHON_UNIT_TEST_SOURCES})
-        target_link_libraries(archon_unit_tests PRIVATE archon Catch2::Catch2WithMain)
-        
-        target_include_directories(archon_unit_tests 
-            PRIVATE 
+        target_link_libraries(archon_unit_tests PRIVATE archon)
+
+        target_include_directories(archon_unit_tests
+            PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/include
         )
 
@@ -186,8 +186,7 @@ if(BUILD_TESTS)
             target_compile_options(archon_unit_tests PRIVATE -Wall -Wextra -Werror -Wpedantic)
         endif()
 
-        include(Catch)
-        catch_discover_tests(archon_unit_tests)
+        add_test(NAME archon_unit_tests COMMAND archon_unit_tests)
     endif()
 endif()
 
